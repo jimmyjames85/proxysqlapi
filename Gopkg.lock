@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/go-chi/chi"
+  packages = ["."]
+  revision = "e83ac2304db3c50cf03d96a2fcd39009d458bc35"
+  version = "v3.3.2"
+
+[[projects]]
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
   revision = "a0583e0143b1624142adab07e0e97fe106d99561"
@@ -16,6 +22,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d2d07951e7a87a5190755e2923ef7b802ec5f3322965db07219f6add1127a1dc"
+  inputs-digest = "251669a03ea2873de17647d988c059f285d8dfc14ccfa90d61f2c2a7ef70f9e5"
   solver-name = "gps-cdcl"
   solver-version = 1

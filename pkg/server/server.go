@@ -29,8 +29,7 @@ func (c *Config) ToJSON() string {
 }
 
 type Server struct {
-	cfg  Config
-	port int
+	cfg Config
 
 	httpRouter    *chi.Mux
 	httpServer    *http.Server
@@ -49,26 +48,22 @@ type Endpoint struct {
 }
 
 // New creates a new server
-func New(port int) (*Server, error) {
-	return &Server{port: port}, nil
+func New(cfg Config) (*Server, error) {
+	return &Server{cfg: cfg}, nil
 }
 
 // Serve starts http server running on the port set in srv
 func (srv *Server) Serve() {
 	defer srv.Close()
-	httpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", srv.port))
+	httpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", srv.cfg.Port))
 	if err != nil {
 		panic(fmt.Sprintf("unable to serve http - %v", err))
 	}
-	healthcheckListener, err := net.Listen("tcp", fmt.Sprintf(":%d", srv.port+1)) //todo
-	if err != nil {
-		panic(fmt.Sprintf("unable to serve healthcheck - %v", err))
-	}
-	srv.listen(httpListener, healthcheckListener)
+	srv.listen(httpListener)
 }
 
 // listen starts a server on the given listeners. It allows for easier testability of the server.
-func (srv *Server) listen(httpListener, healthcheckListener net.Listener) {
+func (srv *Server) listen(httpListener net.Listener) {
 
 	srv.httpRouter = chi.NewRouter()
 
