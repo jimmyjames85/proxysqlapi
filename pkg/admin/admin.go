@@ -12,10 +12,453 @@ import (
 
 /*//////////////////////////////////////////////////////////////////////*/
 
+// MysqlQueryRule represents a row in the runtime_mysql_query_rules
+// and mysql_query_rules tables. The primary key is AUTOINCREMENT
+// (rule_id)
+
+type MysqlQueryRule struct {
+	RuleID               *int    `json:"rule_id"` // rule_id is cannot be null but a default is provided (AUTOINCREMENT)
+	Active               int     `json:"active"`
+	Username             *string `json:"username"`
+	Schemaname           *string `json:"schemaname"`
+	FlagIN               int     `json:"flagIN"`
+	ClientAddr           *string `json:"client_addr"`
+	ProxyAddr            *string `json:"proxy_addr"`
+	ProxyPort            *int    `json:"proxy_port"`
+	Digest               *string `json:"digest"`
+	MatchDigest          *string `json:"match_digest"`
+	MatchPattern         *string `json:"match_pattern"`
+	NegateMatchPattern   int     `json:"negate_match_pattern"`
+	ReModifiers          *string `json:"re_modifiers"`
+	Flagout              *int    `json:"flagOUT"`
+	ReplacePattern       *string `json:"replace_pattern"`
+	DestinationHostgroup *int    `json:"destination_hostgroup"`
+	CacheTTL             *int    `json:"cache_ttl"`
+	Reconnect            *int    `json:"reconnect"`
+	Timeout              *int    `json:"timeout"`
+	Retries              *int    `json:"retries"`
+	Delay                *int    `json:"delay"`
+	NextQueryFlagIN      *int    `json:"next_query_flagIN"`
+	MirrorFlagOUT        *int    `json:"mirror_flagOUT"`
+	MirrorHostgroup      *int    `json:"mirror_hostgroup"`
+	ErrorMsg             *string `json:"error_msg"`
+	OkMsg                *string `json:"OK_msg"`
+	StickyConn           *int    `json:"sticky_conn"`
+	Multiplex            *int    `json:"multiplex"`
+	Log                  *int    `json:"log"`
+	Apply                int     `json:"apply"`
+	Comment              *string `json:"comment"`
+}
+
+func (r *MysqlQueryRule) UnmarshalJSON(data []byte) error {
+	type defaultRule MysqlQueryRule
+	d := defaultRule(*NewMysqlQueryRule())
+	err := json.Unmarshal(data, &d)
+	if err != nil {
+		return err
+	}
+	*r = MysqlQueryRule(d)
+	return nil
+}
+
+// NewMysqlQueryRule returns a mysql_query_rule with default values
+func NewMysqlQueryRule() *MysqlQueryRule {
+	// CREATE TABLE mysql_query_rules (
+	//     rule_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+	//     active INT CHECK (active IN (0,1)) NOT NULL DEFAULT 0,
+	//     username VARCHAR,
+	//     schemaname VARCHAR,
+	//     flagIN INT NOT NULL DEFAULT 0,
+	//     client_addr VARCHAR,
+	//     proxy_addr VARCHAR,
+	//     proxy_port INT,
+	//     digest VARCHAR,
+	//     match_digest VARCHAR,
+	//     match_pattern VARCHAR,
+	//     negate_match_pattern INT CHECK (negate_match_pattern IN (0,1)) NOT NULL DEFAULT 0,
+	//     re_modifiers VARCHAR DEFAULT 'CASELESS',
+	//     flagOUT INT,
+	//     replace_pattern VARCHAR,
+	//     destination_hostgroup INT DEFAULT NULL,
+	//     cache_ttl INT CHECK(cache_ttl > 0),
+	//     reconnect INT CHECK (reconnect IN (0,1)) DEFAULT NULL,
+	//     timeout INT UNSIGNED,
+	//     retries INT CHECK (retries>=0 AND retries <=1000),
+	//     delay INT UNSIGNED,
+	//     next_query_flagIN INT UNSIGNED,
+	//     mirror_flagOUT INT UNSIGNED,
+	//     mirror_hostgroup INT UNSIGNED,
+	//     error_msg VARCHAR,
+	//     OK_msg VARCHAR,
+	//     sticky_conn INT CHECK (sticky_conn IN (0,1)),
+	//     multiplex INT CHECK (multiplex IN (0,1,2)),
+	//     log INT CHECK (log IN (0,1)),
+	//     apply INT CHECK(apply IN (0,1)) NOT NULL DEFAULT 0,
+	//     comment VARCHAR)
+
+	defaultReModifiers := "CASELESS"
+	return &MysqlQueryRule{
+		RuleID:               nil,
+		Active:               0,
+		Username:             nil,
+		Schemaname:           nil,
+		FlagIN:               0,
+		ClientAddr:           nil,
+		ProxyAddr:            nil,
+		ProxyPort:            nil,
+		Digest:               nil,
+		MatchDigest:          nil,
+		MatchPattern:         nil,
+		NegateMatchPattern:   0,
+		ReModifiers:          &defaultReModifiers,
+		Flagout:              nil,
+		ReplacePattern:       nil,
+		DestinationHostgroup: nil,
+		CacheTTL:             nil,
+		Reconnect:            nil,
+		Timeout:              nil,
+		Retries:              nil,
+		Delay:                nil,
+		NextQueryFlagIN:      nil,
+		MirrorFlagOUT:        nil,
+		MirrorHostgroup:      nil,
+		ErrorMsg:             nil,
+		OkMsg:                nil,
+		StickyConn:           nil,
+		Multiplex:            nil,
+		Log:                  nil,
+		Apply:                0,
+		Comment:              nil,
+	}
+}
+
+func (r *MysqlQueryRule) ToJSON() string { return toJSON(r) }
+
+func LoadMysqlQueryRulesToRuntime(db *sql.DB) error {
+	stmt := `LOAD MYSQL QUERY RULES TO RUNTIME`
+	_, err := db.Exec(stmt)
+	return err
+}
+
+func DropMysqlQueryRules(db *sql.DB) error {
+	stmt := `DELETE FROM mysql_query_rules`
+	_, err := db.Exec(stmt)
+	return err
+}
+
+func InsertMysqlQueryRules(db *sql.DB, rules ...*MysqlQueryRule) error {
+	if len(rules) == 0 {
+		return nil
+	}
+	colLen := 31
+	tpl := fmt.Sprintf("(?%s)", strings.Repeat(",?", colLen-1))
+
+	// rule_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+	//     active INT CHECK (active IN (0,1)) NOT NULL DEFAULT 0,
+	//     username VARCHAR,
+	//     schemaname VARCHAR,
+	//     flagIN INT NOT NULL DEFAULT 0,
+	//     client_addr VARCHAR,
+	//     proxy_addr VARCHAR,
+	//     proxy_port INT,
+	//     digest VARCHAR,
+	//     match_digest VARCHAR,
+	//     match_pattern VARCHAR,
+	//     negate_match_pattern INT CHECK (negate_match_pattern IN (0,1)) NOT NULL DEFAULT 0,
+	//     re_modifiers VARCHAR DEFAULT 'CASELESS',
+	//     flagOUT INT,
+	//     replace_pattern VARCHAR,
+	//     destination_hostgroup INT DEFAULT NULL,
+	//     cache_ttl INT CHECK(cache_ttl > 0),
+	//     reconnect INT CHECK (reconnect IN (0,1)) DEFAULT NULL,
+	//     timeout INT UNSIGNED,
+	//     retries INT CHECK (retries>=0 AND retries <=1000),
+	//     delay INT UNSIGNED,
+	//     next_query_flagIN INT UNSIGNED,
+	//     mirror_flagOUT INT UNSIGNED,
+	//     mirror_hostgroup INT UNSIGNED,
+	//     error_msg VARCHAR,
+	//     OK_msg VARCHAR,
+	//     sticky_conn INT CHECK (sticky_conn IN (0,1)),
+	//     multiplex INT CHECK (multiplex IN (0,1,2)),
+	//     log INT CHECK (log IN (0,1)),
+	//     apply INT CHECK(apply IN (0,1)) NOT NULL DEFAULT 0,
+	//     comment VARCHAR)
+
+	stmt := `INSERT INTO mysql_query_rules (
+		 rule_id,
+		 active,
+		 username,
+		 schemaname,
+		 flagIN,
+		 client_addr,
+		 proxy_addr,
+		 proxy_port,
+		 digest,
+		 match_digest,
+		 match_pattern,
+		 negate_match_pattern,
+		 re_modifiers,
+		 flagOUT,
+		 replace_pattern,
+		 destination_hostgroup,
+		 cache_ttl,
+		 reconnect,
+		 timeout,
+		 retries,
+		 delay,
+		 next_query_flagIN,
+		 mirror_flagOUT,
+		 mirror_hostgroup,
+		 error_msg,
+		 OK_msg,
+		 sticky_conn,
+		 multiplex,
+		 log,
+		 apply,
+		 comment)
+		 VALUES ` + tpl
+	stmt = fmt.Sprintf("%s%s", stmt, strings.Repeat(","+tpl, len(rules)-1))
+
+	args := make([]interface{}, colLen*len(rules))
+	for i, r := range rules {
+		if r == nil {
+			return errors.New("cannot insert nil mysql_query_rule")
+		}
+
+		args[colLen*i+0] = r.RuleID
+		args[colLen*i+1] = r.Active
+		args[colLen*i+2] = r.Username
+		args[colLen*i+3] = r.Schemaname
+		args[colLen*i+4] = r.FlagIN
+		args[colLen*i+5] = r.ClientAddr
+		args[colLen*i+6] = r.ProxyAddr
+		args[colLen*i+7] = r.ProxyPort
+		args[colLen*i+8] = r.Digest
+		args[colLen*i+9] = r.MatchDigest
+		args[colLen*i+10] = r.MatchPattern
+		args[colLen*i+11] = r.NegateMatchPattern
+		args[colLen*i+12] = r.ReModifiers
+		args[colLen*i+13] = r.Flagout
+		args[colLen*i+14] = r.ReplacePattern
+		args[colLen*i+15] = r.DestinationHostgroup
+		args[colLen*i+16] = r.CacheTTL
+		args[colLen*i+17] = r.Reconnect
+		args[colLen*i+18] = r.Timeout
+		args[colLen*i+19] = r.Retries
+		args[colLen*i+20] = r.Delay
+		args[colLen*i+21] = r.NextQueryFlagIN
+		args[colLen*i+22] = r.MirrorFlagOUT
+		args[colLen*i+23] = r.MirrorHostgroup
+		args[colLen*i+24] = r.ErrorMsg
+		args[colLen*i+25] = r.OkMsg
+		args[colLen*i+26] = r.StickyConn
+		args[colLen*i+27] = r.Multiplex
+		args[colLen*i+28] = r.Log
+		args[colLen*i+29] = r.Apply
+		args[colLen*i+30] = r.Comment
+	}
+	_, err := db.Exec(stmt, args...)
+
+	if err != nil {
+		fmt.Printf("STATEMENT: %s\n\n", stmt)
+		fmt.Printf("len(args): %d\n\n", len(args))
+		return err
+	}
+	return nil
+}
+
+func SelectMysqlQueryRules(db *sql.DB) ([]MysqlQueryRule, error) {
+	return selectMysqlQueryRules(db, false)
+}
+
+func SelectRuntimeMysqlQueryRules(db *sql.DB) ([]MysqlQueryRule, error) {
+	return selectMysqlQueryRules(db, true)
+}
+
+func selectMysqlQueryRules(db *sql.DB, runtime bool) ([]MysqlQueryRule, error) {
+	var ret []MysqlQueryRule
+	stmt := `SELECT
+		 rule_id,
+		 active,
+		 username,
+		 schemaname,
+		 flagIN,
+		 client_addr,
+		 proxy_addr,
+		 proxy_port,
+		 digest,
+		 match_digest,
+		 match_pattern,
+		 negate_match_pattern,
+		 re_modifiers,
+		 flagOUT,
+		 replace_pattern,
+		 destination_hostgroup,
+		 cache_ttl,
+		 reconnect,
+		 timeout,
+		 retries,
+		 delay,
+		 next_query_flagIN,
+		 mirror_flagOUT,
+		 mirror_hostgroup,
+		 error_msg,
+		 OK_msg,
+		 sticky_conn,
+		 multiplex,
+		 log,
+		 apply,
+		 comment
+		 FROM %s;`
+	stmt = fmt.Sprintf(stmt, prependRuntime("mysql_query_rules", runtime))
+	rows, err := db.Query(stmt)
+	if err != nil {
+		return ret, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+
+		// sql.NullString
+		var username, schemaname, clientAddr, proxyAddr, digest, matchDigest, matchPattern sql.NullString
+		var reModifiers, replacePattern, errorMsg, okMsg, comment sql.NullString
+
+		// sql.NullInt64
+		var proxyPort, flagout, destinationHostgroup, cacheTTL, reconnect, timeout, retries sql.NullInt64
+		var delay, nextQueryFlagIN, mirrorFlagOUT, mirrorHostgroup, stickyConn, multiplex, log sql.NullInt64
+
+		var r MysqlQueryRule
+		err = rows.Scan(
+			&r.RuleID, // NOT NULL
+			&r.Active, // NOT NULL
+			&username,
+			&schemaname,
+			&r.FlagIN, // NOT NULL
+			&clientAddr,
+			&proxyAddr,
+			&proxyPort,
+			&digest,
+			&matchDigest,
+			&matchPattern,
+			&r.NegateMatchPattern, // NOT NULL
+			&reModifiers,
+			&flagout,
+			&replacePattern,
+			&destinationHostgroup,
+			&cacheTTL,
+			&reconnect,
+			&timeout,
+			&retries,
+			&delay,
+			&nextQueryFlagIN,
+			&mirrorFlagOUT,
+			&mirrorHostgroup,
+			&errorMsg,
+			&okMsg,
+			&stickyConn,
+			&multiplex,
+			&log,
+			&r.Apply, // NOT NULL
+			&comment,
+		)
+		if err != nil {
+			return ret, err
+		}
+
+		if username.Valid {
+			r.Username = &username.String
+		}
+		if schemaname.Valid {
+			r.Schemaname = &schemaname.String
+		}
+		if clientAddr.Valid {
+			r.ClientAddr = &clientAddr.String
+		}
+		if proxyAddr.Valid {
+			r.ProxyAddr = &proxyAddr.String
+		}
+		if digest.Valid {
+			r.Digest = &digest.String
+		}
+		if matchDigest.Valid {
+			r.MatchDigest = &matchDigest.String
+		}
+		if matchPattern.Valid {
+			r.MatchPattern = &matchPattern.String
+		}
+		if reModifiers.Valid {
+			r.ReModifiers = &reModifiers.String
+		}
+		if replacePattern.Valid {
+			r.ReplacePattern = &replacePattern.String
+		}
+		if errorMsg.Valid {
+			r.ErrorMsg = &errorMsg.String
+		}
+		if okMsg.Valid {
+			r.OkMsg = &okMsg.String
+		}
+		if comment.Valid {
+			r.Comment = &comment.String
+		}
+		if proxyPort.Valid {
+			*r.ProxyPort = int(proxyPort.Int64)
+		}
+		if flagout.Valid {
+			*r.Flagout = int(flagout.Int64)
+		}
+		if destinationHostgroup.Valid {
+			*r.DestinationHostgroup = int(destinationHostgroup.Int64)
+		}
+		if cacheTTL.Valid {
+			*r.CacheTTL = int(cacheTTL.Int64)
+		}
+		if reconnect.Valid {
+			*r.Reconnect = int(reconnect.Int64)
+		}
+		if timeout.Valid {
+			*r.Timeout = int(timeout.Int64)
+		}
+		if retries.Valid {
+			*r.Retries = int(retries.Int64)
+		}
+		if delay.Valid {
+			*r.Delay = int(delay.Int64)
+		}
+		if nextQueryFlagIN.Valid {
+			*r.NextQueryFlagIN = int(nextQueryFlagIN.Int64)
+		}
+		if mirrorFlagOUT.Valid {
+			*r.MirrorFlagOUT = int(mirrorFlagOUT.Int64)
+		}
+		if mirrorHostgroup.Valid {
+			*r.MirrorHostgroup = int(mirrorHostgroup.Int64)
+		}
+		if stickyConn.Valid {
+			*r.StickyConn = int(stickyConn.Int64)
+		}
+		if multiplex.Valid {
+			*r.Multiplex = int(multiplex.Int64)
+		}
+		if log.Valid {
+			*r.Log = int(log.Int64)
+		}
+
+		ret = append(ret, r)
+	}
+	err = rows.Err()
+	if err != nil {
+		return ret, err
+	}
+	return ret, nil
+}
+
+/*//////////////////////////////////////////////////////////////////////*/
+
 // MysqlUser represents a row in the runtime_mysql_users and
 // mysql_users tables. The primary key is (username, backend)
 type MysqlUser struct {
-	Username              string  `json:"username"`
+	Username              *string `json:"username"` // username cannot be null but not no default is provided
 	Password              *string `json:"password"`
 	Active                int     `json:"active"`
 	UseSSL                int     `json:"use_ssl"`
@@ -31,27 +474,15 @@ type MysqlUser struct {
 
 func (u *MysqlUser) UnmarshalJSON(data []byte) error {
 	type defaultUser MysqlUser
-	d := &defaultUser{
-		Username:              "",
-		Password:              nil,
-		Active:                1,
-		UseSSL:                0,
-		DefaultHostgroup:      0,
-		DefaultSchema:         nil,
-		SchemaLocked:          0,
-		TransactionPersistent: 1,
-		FastForward:           0,
-		Backend:               1,
-		Frontend:              1,
-		MaxConnections:        10000,
-	}
-	err := json.Unmarshal(data, d)
+	d := defaultUser(*NewMysqlUser(""))
+	d.Username = nil // username must be provided in data
+	err := json.Unmarshal(data, &d)
 	if err != nil {
 		return err
 	}
-	*u = MysqlUser(*d)
-	if u.Username == "" {
-		return fmt.Errorf("username must be defined")
+	*u = MysqlUser(d)
+	if u.Username == nil {
+		return fmt.Errorf("mysql_user.username cannot be null")
 	}
 	return nil
 }
@@ -75,7 +506,7 @@ func NewMysqlUser(username string) *MysqlUser {
 	//     UNIQUE (username, frontend) )
 
 	return &MysqlUser{
-		Username:              username,
+		Username:              &username,
 		Password:              nil,
 		Active:                1,
 		UseSSL:                0,
@@ -130,6 +561,8 @@ func InsertMysqlUsers(db *sql.DB, users ...*MysqlUser) error {
 	for i, u := range users {
 		if u == nil {
 			return errors.New("cannot insert nil mysql_user")
+		} else if u.Username == nil {
+			return errors.New("username cannot be nil")
 		}
 		args[colLen*i+0] = u.Username
 		args[colLen*i+1] = u.Password
@@ -228,41 +661,30 @@ func selectMysqlUsers(db *sql.DB, runtime bool) ([]MysqlUser, error) {
 // MysqlServer represents a row in the runtime_mysql_servers and
 // mysql_servers tables. The primary key is (hostgroup_id, hostname, port)
 type MysqlServer struct {
-	HostgroupID       int    `json:"hostgroup_id"`
-	Hostname          string `json:"hostname"`
-	Port              int    `json:"port"`
-	Status            string `json:"status"`
-	Weight            int    `json:"weight"`
-	Compression       int    `json:"compression"`
-	MaxConnections    int    `json:"max_connections"`
-	MaxReplicationLag int    `json:"max_replication_lag"`
-	UseSSL            int    `json:"use_ssl"`
-	MaxLatencyMS      int    `json:"max_latency_ms"`
-	Comment           string `json:"comment"`
+	HostgroupID       int     `json:"hostgroup_id"`
+	Hostname          *string `json:"hostname"` // hostname cannot be null, but no default is provided
+	Port              int     `json:"port"`
+	Status            string  `json:"status"`
+	Weight            int     `json:"weight"`
+	Compression       int     `json:"compression"`
+	MaxConnections    int     `json:"max_connections"`
+	MaxReplicationLag int     `json:"max_replication_lag"`
+	UseSSL            int     `json:"use_ssl"`
+	MaxLatencyMS      int     `json:"max_latency_ms"`
+	Comment           string  `json:"comment"`
 }
 
 func (s *MysqlServer) UnmarshalJSON(data []byte) error {
 	type defaultServer MysqlServer
-	d := &defaultServer{
-		HostgroupID:       0,
-		Hostname:          "",
-		Port:              3306,
-		Status:            "ONLINE",
-		Weight:            1,
-		Compression:       0,
-		MaxConnections:    1000,
-		MaxReplicationLag: 0,
-		UseSSL:            0,
-		MaxLatencyMS:      0,
-		Comment:           "",
-	}
-	err := json.Unmarshal(data, d)
+	d := defaultServer(*NewMysqlServer(""))
+	d.Hostname = nil // Hostname must be provided in data
+	err := json.Unmarshal(data, &d)
 	if err != nil {
 		return err
 	}
-	*s = MysqlServer(*d)
-	if s.Hostname == "" {
-		return fmt.Errorf("hostname must be defined")
+	*s = MysqlServer(d)
+	if s.Hostname == nil {
+		return fmt.Errorf("mysql_server.hostname cannot be null")
 	}
 	return nil
 }
@@ -284,7 +706,7 @@ func NewMysqlServer(hostname string) *MysqlServer {
 	//     PRIMARY KEY (hostgroup_id, hostname, port) )
 	return &MysqlServer{
 		HostgroupID:       0,
-		Hostname:          hostname,
+		Hostname:          &hostname,
 		Port:              3306,
 		Status:            "ONLINE",
 		Weight:            1,
@@ -342,6 +764,8 @@ func InsertMysqlServers(db *sql.DB, servers ...*MysqlServer) error {
 	for i, s := range servers {
 		if s == nil {
 			return errors.New("cannot insert nil mysql_server")
+		} else if s.Hostname == nil {
+			return errors.New("hostname cannot be nil")
 		}
 		args[colLen*i+0] = s.HostgroupID
 		args[colLen*i+1] = s.Hostname
@@ -499,6 +923,7 @@ func selectGlobalVariables(db *sql.DB, runtime bool) (map[string]string, error) 
 
 func UpdateGlobalVariable(db *sql.DB, name, value string) error {
 	stmt := `UPDATE global_variables SET variable_value=? WHERE variable_name=?;`
+	fmt.Printf("%q : %q\n", name, value)
 	_, err := db.Exec(stmt, value, name)
 	return err
 }
@@ -507,6 +932,7 @@ func UpdateGlobalVariable(db *sql.DB, name, value string) error {
 // Config
 
 type Config struct {
+	MysqlQueryRules []*MysqlQueryRule `json:"mysql_query_rules"`
 	MysqlServers    []*MysqlServer    `json:"mysql_servers"`
 	MysqlUsers      []*MysqlUser      `json:"mysql_users"`
 	GlobalVariables map[string]string `json:"global_variables"`
@@ -536,14 +962,13 @@ func LoadConfig(filename string) (*Config, error) {
 	return &c, nil
 }
 
-func (c *Config) LoadToRuntime(db *sql.DB) error {
+func (c *Config) LoadToMemory(db *sql.DB) error {
 	// TODO on any error attempt to load runtime variables to memory
 
 	err := DropMysqlServers(db)
 	if err != nil {
 		return err
 	}
-
 	err = InsertMysqlServers(db, c.MysqlServers...)
 	if err != nil {
 		return err
@@ -558,10 +983,19 @@ func (c *Config) LoadToRuntime(db *sql.DB) error {
 		return err
 	}
 
+	err = DropMysqlQueryRules(db)
+	if err != nil {
+		return err
+	}
+
+	err = InsertMysqlQueryRules(db, c.MysqlQueryRules...)
+	if err != nil {
+		return err
+	}
+
 	for name, value := range c.GlobalVariables {
 		err = UpdateGlobalVariable(db, name, value)
 		if err != nil {
-			// TODO skip or log error
 			return err
 		}
 	}

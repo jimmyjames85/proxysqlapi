@@ -4,13 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/spf13/viper"
 )
 
 type config struct {
@@ -113,6 +111,25 @@ func printMysqlUsers(db *sql.DB, runtime bool) {
 	}
 }
 
+func printMysqlQueryRules(db *sql.DB, runtime bool) {
+
+	var rules []admin.MysqlQueryRule
+	var err error
+	if runtime {
+		printHeader("SelectRuntimeMysqlQueryRules")
+		rules, err = admin.SelectRuntimeMysqlQueryRules(db)
+	} else {
+		printHeader("SelectMysqlQueryRules")
+		rules, err = admin.SelectMysqlQueryRules(db)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, u := range rules {
+		fmt.Printf("%s\n", u.ToJSON())
+	}
+}
+
 func insertSomeMysqlUsers(db *sql.DB) {
 	printHeader("InsertMysqlUsers")
 
@@ -138,34 +155,6 @@ func insertSomeMysqlUsers(db *sql.DB) {
 	fmt.Printf("success\n")
 }
 
-func loadViperCfg(filename string) error {
-
-	f, err := os.Stat(filename)
-	if err != nil {
-		return err
-	}
-
-	if f.IsDir() {
-		return fmt.Errorf("%q is a directory: I was expecting a config file", filename)
-	}
-
-	viper.SetConfigFile(filename)
-	viper.SetConfigType("json")
-	err = viper.ReadInConfig()
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%q\n", viper.GetString("mysql_servers.hostgroup_id"))
-
-	servers := viper.GetStringSlice("mysql_servers")
-	for k, v := range servers {
-		fmt.Printf("%s %s\n", k, v)
-	}
-
-	return nil
-}
-
 func main() {
 
 	c := &config{}
@@ -188,47 +177,12 @@ func main() {
 
 	psqlCfg, err := admin.LoadConfig("example.json")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("err loading config: %v", err)
 	}
 
-	for k, v := range psqlCfg.GlobalVariables {
-		fmt.Printf("%s = %s\n", k, v)
-	}
-
-	for _, s := range psqlCfg.MysqlServers {
-		fmt.Printf("%s\n", s.ToJSON())
-	}
-
-	for _, u := range psqlCfg.MysqlUsers {
-		fmt.Printf("%s\n", u.ToJSON())
-	}
-
-	err = psqlCfg.LoadToRuntime(db)
+	err = psqlCfg.LoadToMemory(db)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	return
-	// insertSomeMysqlServers(db)
-	// printMysqlServers(db, false)
-	// printMysqlServers(db, true)
-
-	// admin.LoadMysqlUsersToRuntime(db)
-	// insertSomeMysqlUsers(db)
-	// printMysqlUsers(db, false)
-	// printMysqlUsers(db, true)
-
-	someVariable := "mysql-shun_recovery_time_sec"
-	err = admin.SetGlobalVariable(db, someVariable, "15")
-	if err != nil {
-		log.Printf(err.Error())
-	}
-	err = admin.LoadMysqlVariablesToRuntime(db)
-	if err != nil {
-		log.Printf(err.Error())
-	}
-
-	printGlobalVariable(db, someVariable, false)
-	printGlobalVariable(db, someVariable, true)
 
 }
