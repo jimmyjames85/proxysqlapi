@@ -8,16 +8,9 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
+	"github.com/jimmyjames85/proxysqlapi/pkg/server"
 	"github.com/kelseyhightower/envconfig"
 )
-
-type config struct {
-	Port   int    `envconfig:"PORT" required:"false" default:"16032"` // port to run on
-	DBuser string `envconfig:"DB_USER" default:"root"`
-	DBPswd string `envconfig:"DB_PASS" default:""`
-	DBHost string `envconfig:"DB_HOST" default:"localhost"`
-	DBPort int    `envconfig:"DB_PORT" default:"6032"`
-}
 
 func printHeader(h string) {
 	fmt.Printf("----------------------------------------\n%s\n\n", h)
@@ -157,7 +150,7 @@ func insertSomeMysqlUsers(db *sql.DB) {
 
 func main() {
 
-	c := &config{}
+	c := server.Config{}
 	envconfig.MustProcess("PROXYSQLAPI", c)
 
 	dbcfg := mysql.Config{
