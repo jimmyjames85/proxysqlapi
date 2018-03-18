@@ -15,6 +15,8 @@ services:
     build:
       context: .
       dockerfile: ./docker/psql1.4.7.dockerfile
+    volumes:
+      - ./docker/proxysql.cnf:/etc/proxysql.cnf
     links:
       - mysql
     ports:
@@ -25,4 +27,16 @@ services:
       - "6033"
     command: >
       bash -c "while ! echo | nc -w1 mysql 3306 > /dev/null ; do echo waiting for mysql; sleep 1; done; echo mysql connected &&
-      /usr/bin/proxysql -f --initial 2>&1 | tee -a /var/lib/proxysql/proxysql.log"
+      /usr/bin/proxysql -f -c /etc/proxysql.cnf --initial 2>&1 | tee -a /var/lib/proxysql/proxysql.log"
+
+  devel:
+    build:
+      context: .
+      dockerfile: ./docker/devel.dockerfile
+    links:
+      - mysql
+      - proxysql
+    command: >
+      bash -c "while ! echo | nc -w1 proxysql 6032 > /dev/null ; do echo waiting for proxysql; sleep 1; done; echo proxysql connected &&
+      mysql -uadmin -padmin -hproxysql -P6032 -e \"set admin-admin_credentials='admin:admin;root:';LOAD ADMIN VARIABLES TO RUNTIME;\" &&
+      echo devel ready"

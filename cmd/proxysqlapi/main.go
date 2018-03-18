@@ -2,9 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -168,49 +166,6 @@ func loadViperCfg(filename string) error {
 	return nil
 }
 
-type proxysqlCfg struct {
-	MysqlServers    []*admin.MysqlServer `json:"mysql_servers"`
-	MysqlUsers      []*admin.MysqlUser   `json:"mysql_users"`
-	GlobalVariables map[string]string    `json:"global_variables"`
-}
-
-func loadCfg(filename string) (*proxysqlCfg, error) {
-	f, err := os.Stat(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	if f.IsDir() {
-		return nil, fmt.Errorf("%q is a directory: I was expecting a config file", filename)
-	}
-
-	b, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("%s\n\n\n", string(b))
-
-	var c proxysqlCfg
-	err = json.Unmarshal(b, &c)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for k, v := range c.GlobalVariables {
-		fmt.Printf("%s = %s\n", k, v)
-	}
-
-	for _, s := range c.MysqlServers {
-		fmt.Printf("%s\n", s.ToJSON())
-	}
-
-	for _, u := range c.MysqlUsers {
-		fmt.Printf("%s\n", u.ToJSON())
-	}
-
-	return &c, nil
-}
-
 func main() {
 
 	c := &config{}
@@ -231,12 +186,28 @@ func main() {
 	}
 	defer db.Close()
 
-	psqlCfg, err := loadCfg("example.json")
+	psqlCfg, err := admin.LoadConfig("example.json")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	insertSomeMysqlServers(db, psqlCfg.MysqlServers)
+	for k, v := range psqlCfg.GlobalVariables {
+		fmt.Printf("%s = %s\n", k, v)
+	}
+
+	for _, s := range psqlCfg.MysqlServers {
+		fmt.Printf("%s\n", s.ToJSON())
+	}
+
+	for _, u := range psqlCfg.MysqlUsers {
+		fmt.Printf("%s\n", u.ToJSON())
+	}
+
+	err = psqlCfg.LoadToRuntime(db)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return
 	// insertSomeMysqlServers(db)
 	// printMysqlServers(db, false)

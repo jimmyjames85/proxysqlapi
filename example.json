@@ -12,19 +12,25 @@
 	    "hostname": "rw.foo.database.net",
 	    "port": 3306,
 	    "max_connections": 100,
-	    "comment": "foo write"
+	    "comment": "foo write i mean really right"
 	}
     ],
 
     "mysql_users" : [
 	{
-	    "username":"jimboslice",
-	    "password":"ruhroh"
+	    "username": "jimboslice",
+	    "password": "ruhroh"
+	},
+	{
+	    "username": "bruce",
+	    "password": "wayne",
+	    "active": 0
 	}
     ],
 
     "global_variables" : {
-	"mysql-max_allowed_packet": "4194304",
+	"mysql-jimmy": "1234",
+	"mysql-max_allowed_packet": "1234",
 	"mysql-connect_timeout_server_max": "10000"
     }
 }

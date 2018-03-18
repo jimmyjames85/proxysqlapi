@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -434,7 +436,7 @@ type GlobalVariable struct {
 
 func (v *GlobalVariable) ToJSON() string { return toJSON(v) }
 
-// TODO verify `LOAD MYSQL VARIABLES TO RUNTIME` is the same as `LOAD MYSQL VARIABLES TO RUNTIME`
+// TODO verify `LOAD MYSQL VARIABLES TO RUNTIME` is the same as `LOAD ADMIN VARIABLES TO RUNTIME`
 
 // TODO proxysql will silently error if setting a runtime variable to
 // an improper value e.g. a number out of range For example, try
@@ -493,6 +495,78 @@ func selectGlobalVariables(db *sql.DB, runtime bool) (map[string]string, error) 
 		return ret, err
 	}
 	return ret, nil
+}
+
+func UpdateGlobalVariable(db *sql.DB, name, value string) error {
+	stmt := `UPDATE global_variables SET variable_value=? WHERE variable_name=?;`
+	_, err := db.Exec(stmt, value, name)
+	return err
+}
+
+//////////////////////////////////////////////////////////////////////
+// Config
+
+type Config struct {
+	MysqlServers    []*MysqlServer    `json:"mysql_servers"`
+	MysqlUsers      []*MysqlUser      `json:"mysql_users"`
+	GlobalVariables map[string]string `json:"global_variables"`
+}
+
+func LoadConfig(filename string) (*Config, error) {
+	f, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if f.IsDir() {
+		return nil, fmt.Errorf("cannot open directory as config file: %q", filename)
+	}
+
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	var c Config
+	err = json.Unmarshal(b, &c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
+}
+
+func (c *Config) LoadToRuntime(db *sql.DB) error {
+	// TODO on any error attempt to load runtime variables to memory
+
+	err := DropMysqlServers(db)
+	if err != nil {
+		return err
+	}
+
+	err = InsertMysqlServers(db, c.MysqlServers...)
+	if err != nil {
+		return err
+	}
+
+	err = DropMysqlUsers(db)
+	if err != nil {
+		return err
+	}
+	err = InsertMysqlUsers(db, c.MysqlUsers...)
+	if err != nil {
+		return err
+	}
+
+	for name, value := range c.GlobalVariables {
+		err = UpdateGlobalVariable(db, name, value)
+		if err != nil {
+			// TODO skip or log error
+			return err
+		}
+	}
+
+	return nil
 }
 
 ////////// Helper functions
