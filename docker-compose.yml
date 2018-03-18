@@ -1,0 +1,28 @@
+version: '2'
+services:
+
+  mysql:
+    image: percona:5.5
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=1
+    expose:
+      - "3306"
+    ports:
+      - "3306:3306"
+
+
+  proxysql:
+    build:
+      context: .
+      dockerfile: ./docker/psql1.4.7.dockerfile
+    links:
+      - mysql
+    ports:
+      - "6032:6032"
+      - "6033:6033"
+    expose:
+      - "6032"
+      - "6033"
+    command: >
+      bash -c "while ! echo | nc -w1 mysql 3306 > /dev/null ; do echo waiting for mysql; sleep 1; done; echo mysql connected &&
+      /usr/bin/proxysql -f --initial 2>&1 | tee -a /var/lib/proxysql/proxysql.log"
