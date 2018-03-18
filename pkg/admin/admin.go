@@ -27,6 +27,33 @@ type MysqlUser struct {
 	MaxConnections        int     `json:"max_connections"`
 }
 
+func (u *MysqlUser) UnmarshalJSON(data []byte) error {
+	type defaultUser MysqlUser
+	d := &defaultUser{
+		Username:              "",
+		Password:              nil,
+		Active:                1,
+		UseSSL:                0,
+		DefaultHostgroup:      0,
+		DefaultSchema:         nil,
+		SchemaLocked:          0,
+		TransactionPersistent: 1,
+		FastForward:           0,
+		Backend:               1,
+		Frontend:              1,
+		MaxConnections:        10000,
+	}
+	err := json.Unmarshal(data, d)
+	if err != nil {
+		return err
+	}
+	*u = MysqlUser(*d)
+	if u.Username == "" {
+		return fmt.Errorf("username must be defined")
+	}
+	return nil
+}
+
 //  NewMysqlUser returns a mysql_user entry with default values
 func NewMysqlUser(username string) *MysqlUser {
 	// CREATE TABLE mysql_users (
@@ -212,6 +239,32 @@ type MysqlServer struct {
 	Comment           string `json:"comment"`
 }
 
+func (s *MysqlServer) UnmarshalJSON(data []byte) error {
+	type defaultServer MysqlServer
+	d := &defaultServer{
+		HostgroupID:       0,
+		Hostname:          "",
+		Port:              3306,
+		Status:            "ONLINE",
+		Weight:            1,
+		Compression:       0,
+		MaxConnections:    1000,
+		MaxReplicationLag: 0,
+		UseSSL:            0,
+		MaxLatencyMS:      0,
+		Comment:           "",
+	}
+	err := json.Unmarshal(data, d)
+	if err != nil {
+		return err
+	}
+	*s = MysqlServer(*d)
+	if s.Hostname == "" {
+		return fmt.Errorf("hostname must be defined")
+	}
+	return nil
+}
+
 //  NewMysqlServer returns a mysql_server entry with default values
 func NewMysqlServer(hostname string) *MysqlServer {
 	// CREATE TABLE mysql_servers (
@@ -379,10 +432,6 @@ type GlobalVariable struct {
 	Value string `json:"variable_value"`
 }
 
-func NewGlobalVaraible(name, value string) *GlobalVariable {
-	return &GlobalVariable{Name: name, Value: value}
-}
-
 func (v *GlobalVariable) ToJSON() string { return toJSON(v) }
 
 // TODO verify `LOAD MYSQL VARIABLES TO RUNTIME` is the same as `LOAD MYSQL VARIABLES TO RUNTIME`
@@ -411,16 +460,16 @@ func SetGlobalVariable(db *sql.DB, name, value string) error {
 	return err
 }
 
-func SelectRuntimeGlobalVariables(db *sql.DB) ([]GlobalVariable, error) {
+func SelectRuntimeGlobalVariables(db *sql.DB) (map[string]string, error) {
 	return selectGlobalVariables(db, true)
 }
 
-func SelectGlobalVariables(db *sql.DB) ([]GlobalVariable, error) {
+func SelectGlobalVariables(db *sql.DB) (map[string]string, error) {
 	return selectGlobalVariables(db, false)
 }
 
-func selectGlobalVariables(db *sql.DB, runtime bool) ([]GlobalVariable, error) {
-	var ret []GlobalVariable
+func selectGlobalVariables(db *sql.DB, runtime bool) (map[string]string, error) {
+	ret := make(map[string]string)
 	stmt := `SELECT
 		 variable_name,
 		 variable_value
@@ -437,7 +486,7 @@ func selectGlobalVariables(db *sql.DB, runtime bool) ([]GlobalVariable, error) {
 		if err != nil {
 			return ret, err
 		}
-		ret = append(ret, v)
+		ret[v.Name] = v.Value
 	}
 	err = rows.Err()
 	if err != nil {
@@ -445,29 +494,6 @@ func selectGlobalVariables(db *sql.DB, runtime bool) ([]GlobalVariable, error) {
 	}
 	return ret, nil
 }
-
-//////////////////////////////////////////////////////////////////////
-// func SelectGlobalVariable(db *sql.DB, variableName string) (string, error) {
-// 	return selectGlobalVariable(db, variableName, false)
-// }
-// func SelectRuntimeGlobalVariable(db *sql.DB, variableName string) (string, error) {
-// 	return selectGlobalVariable(db, variableName, true)
-// }
-// func selectGlobalVariable(db *sql.DB, variableName string, runtime bool) (string, error) {
-// 	tbl := prependRuntime("global_variables", runtime)
-// 	stmt := fmt.Sprintf("SELECT variable_value FROM %s WHERE variable_name=?;", tbl)
-// 	row := db.QueryRow(stmt, variableName)
-// 	if row == nil {
-// 		return "", errors.New("no such variable name")
-// 	}
-// 	var value string
-// 	err := row.Scan(&value)
-// 	if err != nil {
-// 		fmt.Printf("here too")
-// 		return "", err
-// 	}
-// 	return value, nil
-// }
 
 ////////// Helper functions
 

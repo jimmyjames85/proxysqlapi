@@ -1,0 +1,30 @@
+{
+    "mysql_servers" : [
+	{
+	    "hostgroup_id": 1,
+	    "hostname": "ro.foo.database.net",
+	    "port": 3306,
+	    "max_connections": 100,
+	    "comment": "foo read only"
+	},
+	{
+	    "hostgroup_id": 2,
+	    "hostname": "rw.foo.database.net",
+	    "port": 3306,
+	    "max_connections": 100,
+	    "comment": "foo write"
+	}
+    ],
+
+    "mysql_users" : [
+	{
+	    "username":"jimboslice",
+	    "password":"ruhroh"
+	}
+    ],
+
+    "global_variables" : {
+	"mysql-max_allowed_packet": "4194304",
+	"mysql-connect_timeout_server_max": "10000"
+    }
+}

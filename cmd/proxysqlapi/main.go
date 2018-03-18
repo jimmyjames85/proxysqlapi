@@ -2,19 +2,23 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/spf13/viper"
 )
 
 type config struct {
 	Port   int    `envconfig:"PORT" required:"false" default:"16032"` // port to run on
-	DBuser string `envconfig:"DB_USER" default:"admin"`
-	DBPswd string `envconfig:"DB_PASS" default:"admin"`
+	DBuser string `envconfig:"DB_USER" default:"root"`
+	DBPswd string `envconfig:"DB_PASS" default:""`
 	DBHost string `envconfig:"DB_HOST" default:"localhost"`
 	DBPort int    `envconfig:"DB_PORT" default:"6032"`
 }
@@ -24,7 +28,7 @@ func printHeader(h string) {
 }
 
 func printGlobalVariable(db *sql.DB, name string, runtime bool) {
-	var vars []admin.GlobalVariable
+	var vars map[string]string
 	var err error
 	if runtime {
 		printHeader("PrintRuntimeGlobalVariable")
@@ -33,21 +37,21 @@ func printGlobalVariable(db *sql.DB, name string, runtime bool) {
 		printHeader("PrintGlobalVariable")
 		vars, err = admin.SelectGlobalVariables(db)
 	}
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	value := fmt.Sprintf("no such global_variable: %q", name)
-	for _, v := range vars {
-		if strings.ToLower(v.Name) == name {
-			value = v.ToJSON()
-		}
+	value, ok := vars[name]
+	if !ok {
+		value = fmt.Sprintf("no such global_variable: %q", name)
 	}
+
 	fmt.Printf("%s\n", value)
 }
 
 func printGlobalVariables(db *sql.DB, runtime bool) {
-	var vars []admin.GlobalVariable
+	var vars map[string]string
 	var err error
 	if runtime {
 		printHeader("SelectRuntimeGlobalVariables")
@@ -59,8 +63,8 @@ func printGlobalVariables(db *sql.DB, runtime bool) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, v := range vars {
-		fmt.Printf("%55s:\t%s\n", v.Name, v.Value)
+	for name, value := range vars {
+		fmt.Printf("%55s:\t%s\n", name, value)
 	}
 }
 
@@ -83,27 +87,9 @@ func printMysqlServers(db *sql.DB, runtime bool) {
 	}
 }
 
-func insertSomeMysqlServers(db *sql.DB) {
+func insertSomeMysqlServers(db *sql.DB, servers []*admin.MysqlServer) {
 	printHeader("InsertMysqlServers")
-
-	hostgroupID := 5
-
-	err := admin.DropMysqlServerHostgroup(db, hostgroupID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	hosts := []string{"foo", "bar"}
-	var arr []*admin.MysqlServer
-
-	for _, h := range hosts {
-		s := admin.NewMysqlServer(h)
-		s.Comment = "rw " + h
-		s.HostgroupID = hostgroupID
-		arr = append(arr, s)
-	}
-
-	err = admin.InsertMysqlServers(db, arr...)
+	err := admin.InsertMysqlServers(db, servers...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -154,6 +140,77 @@ func insertSomeMysqlUsers(db *sql.DB) {
 	fmt.Printf("success\n")
 }
 
+func loadViperCfg(filename string) error {
+
+	f, err := os.Stat(filename)
+	if err != nil {
+		return err
+	}
+
+	if f.IsDir() {
+		return fmt.Errorf("%q is a directory: I was expecting a config file", filename)
+	}
+
+	viper.SetConfigFile(filename)
+	viper.SetConfigType("json")
+	err = viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%q\n", viper.GetString("mysql_servers.hostgroup_id"))
+
+	servers := viper.GetStringSlice("mysql_servers")
+	for k, v := range servers {
+		fmt.Printf("%s %s\n", k, v)
+	}
+
+	return nil
+}
+
+type proxysqlCfg struct {
+	MysqlServers    []*admin.MysqlServer `json:"mysql_servers"`
+	MysqlUsers      []*admin.MysqlUser   `json:"mysql_users"`
+	GlobalVariables map[string]string    `json:"global_variables"`
+}
+
+func loadCfg(filename string) (*proxysqlCfg, error) {
+	f, err := os.Stat(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	if f.IsDir() {
+		return nil, fmt.Errorf("%q is a directory: I was expecting a config file", filename)
+	}
+
+	b, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("%s\n\n\n", string(b))
+
+	var c proxysqlCfg
+	err = json.Unmarshal(b, &c)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for k, v := range c.GlobalVariables {
+		fmt.Printf("%s = %s\n", k, v)
+	}
+
+	for _, s := range c.MysqlServers {
+		fmt.Printf("%s\n", s.ToJSON())
+	}
+
+	for _, u := range c.MysqlUsers {
+		fmt.Printf("%s\n", u.ToJSON())
+	}
+
+	return &c, nil
+}
+
 func main() {
 
 	c := &config{}
@@ -174,6 +231,13 @@ func main() {
 	}
 	defer db.Close()
 
+	psqlCfg, err := loadCfg("example.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	insertSomeMysqlServers(db, psqlCfg.MysqlServers)
+	return
 	// insertSomeMysqlServers(db)
 	// printMysqlServers(db, false)
 	// printMysqlServers(db, true)
