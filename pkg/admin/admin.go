@@ -387,14 +387,18 @@ func (v *GlobalVariable) ToJSON() string { return toJSON(v) }
 
 // TODO verify `LOAD MYSQL VARIABLES TO RUNTIME` is the same as `LOAD MYSQL VARIABLES TO RUNTIME`
 
-// TODO this isn't working
+// TODO proxysql will silently error if setting a runtime variable to
+// an improper value e.g. a number out of range For example, try
+// setting `mysql-threads` to 123434. This function will not return an
+// error, but proxysql will silenty reset `mysql-threads` to its
+// default value
+
 func LoadMysqlVariablesToRuntime(db *sql.DB) error {
 	stmt := `LOAD MYSQL VARIABLES TO RUNTIME`
 	_, err := db.Exec(stmt)
 	return err
 }
 
-// TODO this isn't working
 func LoadAdminVariablesToRuntime(db *sql.DB) error {
 	stmt := `LOAD ADMIN VARIABLES TO RUNTIME`
 	_, err := db.Exec(stmt)

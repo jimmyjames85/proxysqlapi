@@ -183,7 +183,8 @@ func main() {
 	// printMysqlUsers(db, false)
 	// printMysqlUsers(db, true)
 
-	err = admin.SetGlobalVariable(db, "mysql-threads", "15")
+	someVariable := "mysql-shun_recovery_time_sec"
+	err = admin.SetGlobalVariable(db, someVariable, "15")
 	if err != nil {
 		log.Printf(err.Error())
 	}
@@ -192,7 +193,7 @@ func main() {
 		log.Printf(err.Error())
 	}
 
-	printGlobalVariable(db, "mysql-threads", false)
-	printGlobalVariable(db, "mysql-threads", true)
+	printGlobalVariable(db, someVariable, false)
+	printGlobalVariable(db, someVariable, true)
 
 }
