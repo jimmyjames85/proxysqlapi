@@ -6,7 +6,6 @@ import (
 	"log"
 	"strings"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
 	"github.com/jimmyjames85/proxysqlapi/pkg/server"
 	"github.com/kelseyhightower/envconfig"
@@ -149,33 +148,18 @@ func insertSomeMysqlUsers(db *sql.DB) {
 }
 
 func main() {
+	cfg := server.Config{}
+	envconfig.MustProcess("PROXYSQLAPI", &cfg)
+	srv, err := server.New(cfg)
 
-	c := server.Config{}
-	envconfig.MustProcess("PROXYSQLAPI", c)
-
-	dbcfg := mysql.Config{
-		Addr:              fmt.Sprintf("%s:%d", c.DBHost, c.DBPort),
-		Passwd:            c.DBPswd,
-		User:              c.DBuser,
-		Net:               "tcp",
-		InterpolateParams: true,
-	}
-
-	db, err := sql.Open("mysql", dbcfg.FormatDSN())
-	if err != nil {
-		log.Fatal(err)
-
-	}
-	defer db.Close()
-
-	psqlCfg, err := admin.LoadConfig("example.json")
+	//psqlCfg, err := admin.LoadConfig("example.json")
 	if err != nil {
 		log.Fatalf("err loading config: %v", err)
 	}
 
-	err = psqlCfg.LoadToMemory(db)
-	if err != nil {
-		log.Fatal(err)
-	}
+	err = srv.Serve()
 
+	if err != nil {
+		log.Fatalf("could not start server: %v", err)
+	}
 }

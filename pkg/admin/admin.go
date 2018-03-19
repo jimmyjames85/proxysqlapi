@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 )
@@ -923,22 +924,24 @@ func selectGlobalVariables(db *sql.DB, runtime bool) (map[string]string, error) 
 
 func UpdateGlobalVariable(db *sql.DB, name, value string) error {
 	stmt := `UPDATE global_variables SET variable_value=? WHERE variable_name=?;`
-	fmt.Printf("%q : %q\n", name, value)
 	_, err := db.Exec(stmt, value, name)
+	if err != nil {
+		log.Printf("WTF----------------------\n\n%s %s %s\n\n", name, value, stmt)
+	}
 	return err
 }
 
 //////////////////////////////////////////////////////////////////////
 // Config
 
-type Config struct {
+type ProxySQLConfig struct {
 	MysqlQueryRules []*MysqlQueryRule `json:"mysql_query_rules"`
 	MysqlServers    []*MysqlServer    `json:"mysql_servers"`
 	MysqlUsers      []*MysqlUser      `json:"mysql_users"`
 	GlobalVariables map[string]string `json:"global_variables"`
 }
 
-func LoadConfig(filename string) (*Config, error) {
+func LoadProxySQLConfigFile(filename string) (*ProxySQLConfig, error) {
 	f, err := os.Stat(filename)
 	if err != nil {
 		return nil, err
@@ -953,7 +956,7 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, err
 	}
 
-	var c Config
+	var c ProxySQLConfig
 	err = json.Unmarshal(b, &c)
 	if err != nil {
 		return nil, err
@@ -962,8 +965,8 @@ func LoadConfig(filename string) (*Config, error) {
 	return &c, nil
 }
 
-func (c *Config) LoadToMemory(db *sql.DB) error {
-	// TODO on any error attempt to load runtime variables to memory
+func (c *ProxySQLConfig) LoadToMemory(db *sql.DB) error {
+	// TODO on any error attempt to load runtime variables to memory ( :/ there is no LOAD RUNTIME TO MEMORY cmd )
 
 	err := DropMysqlServers(db)
 	if err != nil {
@@ -999,6 +1002,39 @@ func (c *Config) LoadToMemory(db *sql.DB) error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (c *ProxySQLConfig) LoadToRuntime(db *sql.DB) error {
+
+	err := c.LoadToMemory(db)
+	if err != nil {
+		fmt.Printf("ltm")
+		return err
+	}
+
+	if err = LoadMysqlServersToRuntime(db); err != nil {
+		fmt.Printf("str")
+		return err
+	}
+
+	if err = LoadMysqlUsersToRuntime(db); err != nil {
+		fmt.Printf("utr")
+		return err
+	}
+
+	if err = LoadMysqlQueryRulesToRuntime(db); err != nil {
+		fmt.Printf("qrtr")
+		return err
+	}
+
+	fmt.Printf("loading admin vars to runtime.....\n")
+	if err = LoadAdminVariablesToRuntime(db); err != nil {
+
+		return err
+	}
+	fmt.Printf("DONE\n")
 
 	return nil
 }
