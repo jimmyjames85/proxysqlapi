@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strconv"
@@ -22,24 +23,32 @@ func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 	bw.Flush()
 }
 
-// configHandler returns a json formatted version of the config with
-// sensitive items redacted. #TODO redact sensitive items
+// configHandler returns a json formatted version of the proxysqlapi
+// config with sensitive items redacted. #TODO redact sensitive items
 func (s *Server) configHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO TODO TODO TODO TODO TODO TODO TODO TODO redact sensitive items
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(s.cfg.ToJSON()))
 }
 
-//TODO loadHandler should parse it's input as a json string (shrug) rather than loading a file
+// TODO TODO TODO TODO TODO TODO TODO TODO TODO redact sensitive items
+func (s *Server) loadMysqlServersHandler(w http.ResponseWriter, r *http.Request) {}
 
-func (s *Server) loadToRuntimeHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleLoad(w, r, true)
+// TODO TODO TODO TODO TODO TODO TODO TODO TODO redact sensitive items
+func (s *Server) loadMysqlServersToRuntimeHandler(w http.ResponseWriter, r *http.Request) {}
+
+// TODO TODO TODO TODO TODO TODO TODO TODO TODO redact sensitive items
+func (s *Server) handleLoadServers(w http.ResponseWriter, r *http.Request) {}
+
+func (s *Server) loadConfigToRuntimeHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadConfig(w, r, true)
 }
 
-func (s *Server) loadHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleLoad(w, r, false)
+func (s *Server) loadConfigHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadConfig(w, r, false)
 }
 
-func (s *Server) handleLoad(w http.ResponseWriter, r *http.Request, runtime bool) {
+func (s *Server) handleLoadConfig(w http.ResponseWriter, r *http.Request, runtime bool) {
 
 	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
 	if err != nil {
@@ -50,8 +59,12 @@ func (s *Server) handleLoad(w http.ResponseWriter, r *http.Request, runtime bool
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	pcfg, err := admin.LoadProxySQLConfigFile("example.json")
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	pcfg, err := admin.NewProxysqlConfig(b)
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return
@@ -68,6 +81,7 @@ func (s *Server) handleLoad(w http.ResponseWriter, r *http.Request, runtime bool
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"success":"true"}`))
 }
 

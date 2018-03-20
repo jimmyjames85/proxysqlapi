@@ -941,6 +941,15 @@ type ProxySQLConfig struct {
 	GlobalVariables map[string]string `json:"global_variables"`
 }
 
+func NewProxysqlConfig(b []byte) (*ProxySQLConfig, error) {
+	var c ProxySQLConfig
+	err := json.Unmarshal(b, &c)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 func LoadProxySQLConfigFile(filename string) (*ProxySQLConfig, error) {
 	f, err := os.Stat(filename)
 	if err != nil {
@@ -956,13 +965,7 @@ func LoadProxySQLConfigFile(filename string) (*ProxySQLConfig, error) {
 		return nil, err
 	}
 
-	var c ProxySQLConfig
-	err = json.Unmarshal(b, &c)
-	if err != nil {
-		return nil, err
-	}
-
-	return &c, nil
+	return NewProxysqlConfig(b)
 }
 
 func (c *ProxySQLConfig) LoadToMemory(db *sql.DB) error {
@@ -1031,7 +1034,6 @@ func (c *ProxySQLConfig) LoadToRuntime(db *sql.DB) error {
 
 	fmt.Printf("loading admin vars to runtime.....\n")
 	if err = LoadAdminVariablesToRuntime(db); err != nil {
-
 		return err
 	}
 	fmt.Printf("DONE\n")

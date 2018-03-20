@@ -18,7 +18,8 @@ import (
 )
 
 type Config struct {
-	Port   int    `envconfig:"PORT" required:"false" default:"16032"` // port to run on
+	Port int `envconfig:"PORT" required:"false" default:"16032"` // port to run on
+
 	DBuser string `envconfig:"DB_USER" default:"root"`
 	DBPswd string `envconfig:"DB_PASS" default:""`
 	DBHost string `envconfig:"DB_HOST" default:"localhost"`
@@ -90,17 +91,19 @@ func (s *Server) listen(httpListener net.Listener) {
 	s.httpEndpoints = []Endpoint{
 		// root and healthchecks
 		{Method: "GET", Path: "/", HandlerFunc: s.rootHandler},
-		{Method: "GET", Path: "/load/config/{userID}", HandlerFunc: s.loadHandler},
-		{Method: "GET", Path: "/load/config/to/runtime/{userID}", HandlerFunc: s.loadToRuntimeHandler},
+		{Method: "POST", Path: "/load/config/{userID}", HandlerFunc: s.loadConfigHandler},
+		{Method: "POST", Path: "/load/config/to/runtime/{userID}", HandlerFunc: s.loadConfigToRuntimeHandler},
 
-		// tables
+		{Method: "POST", Path: "/load/mysql_servers/{userID}", HandlerFunc: s.loadMysqlServersHandler},
+		{Method: "POST", Path: "/load/mysql_servers/to/runtime/{userID}", HandlerFunc: s.loadMysqlServersToRuntimeHandler},
+
+		// memory tables
 		{Method: "GET", Path: "/admin/mysql_servers", HandlerFunc: s.adminMysqlServersHandler},
-		{Method: "GET", Path: "/admin/runtime/mysql_servers", HandlerFunc: s.adminRuntimeMysqlServersHandler},
-
 		{Method: "GET", Path: "/admin/mysql_users", HandlerFunc: s.adminMysqlUsersHandler},
-		{Method: "GET", Path: "/admin/runtime/mysql_users", HandlerFunc: s.adminRuntimeMysqlUsersHandler},
-
 		{Method: "GET", Path: "/admin/mysql_query_rules", HandlerFunc: s.adminMysqlQueryRulesHandler},
+		// runtime tables
+		{Method: "GET", Path: "/admin/runtime/mysql_servers", HandlerFunc: s.adminRuntimeMysqlServersHandler},
+		{Method: "GET", Path: "/admin/runtime/mysql_users", HandlerFunc: s.adminRuntimeMysqlUsersHandler},
 		{Method: "GET", Path: "/admin/runtime/mysql_query_rules", HandlerFunc: s.adminRuntimeMysqlQueryRulesHandler},
 
 		// pprof

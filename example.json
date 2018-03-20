@@ -18,12 +18,19 @@
     "mysql_users": [
         {
             "username": "howdy partner",
-            "password": "ruhroh"
+            "password": "ruhroh",
+	    "active": 0
         },
         {
             "username": "donald",
-            "password": "duck",
-            "active": 0
+            "password": "frontend",
+	    "backend": 0,
+	    "frontend": 0
+        },
+        {
+            "username": "donald",
+            "password": "backend",
+	    "backend": 1
         }
     ],
     "global_variables": {
@@ -33,7 +40,7 @@
     },
     "mysql_query_rules": [
         {"rule_id": 1},
-        {"rule_id": 2},
+        {"rule_id": 2, "active":0},
         {"rule_id": 3}
     ]
 }
