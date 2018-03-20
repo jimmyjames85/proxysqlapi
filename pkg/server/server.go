@@ -90,7 +90,18 @@ func (s *Server) listen(httpListener net.Listener) {
 	s.httpEndpoints = []Endpoint{
 		// root and healthchecks
 		{Method: "GET", Path: "/", HandlerFunc: s.rootHandler},
-		{Method: "GET", Path: "/load/{userID}", HandlerFunc: s.loadHandler},
+		{Method: "GET", Path: "/load/config/{userID}", HandlerFunc: s.loadHandler},
+		{Method: "GET", Path: "/load/config/to/runtime/{userID}", HandlerFunc: s.loadToRuntimeHandler},
+
+		// tables
+		{Method: "GET", Path: "/admin/mysql_servers", HandlerFunc: s.adminMysqlServersHandler},
+		{Method: "GET", Path: "/admin/runtime/mysql_servers", HandlerFunc: s.adminRuntimeMysqlServersHandler},
+
+		{Method: "GET", Path: "/admin/mysql_users", HandlerFunc: s.adminMysqlUsersHandler},
+		{Method: "GET", Path: "/admin/runtime/mysql_users", HandlerFunc: s.adminRuntimeMysqlUsersHandler},
+
+		{Method: "GET", Path: "/admin/mysql_query_rules", HandlerFunc: s.adminMysqlQueryRulesHandler},
+		{Method: "GET", Path: "/admin/runtime/mysql_query_rules", HandlerFunc: s.adminRuntimeMysqlQueryRulesHandler},
 
 		// pprof
 		{Method: "GET", Path: "/debug/config", HandlerFunc: s.configHandler},

@@ -22,7 +22,8 @@ func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 	bw.Flush()
 }
 
-// configHandler returns a json formatted version of the config with sensitive items redacted.
+// configHandler returns a json formatted version of the config with
+// sensitive items redacted. #TODO redact sensitive items
 func (s *Server) configHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(s.cfg.ToJSON()))
@@ -30,8 +31,15 @@ func (s *Server) configHandler(w http.ResponseWriter, r *http.Request) {
 
 //TODO loadHandler should parse it's input as a json string (shrug) rather than loading a file
 
-// loadHandler returns a json formatted version of the config with sensitive items redacted.
+func (s *Server) loadToRuntimeHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoad(w, r, true)
+}
+
 func (s *Server) loadHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoad(w, r, false)
+}
+
+func (s *Server) handleLoad(w http.ResponseWriter, r *http.Request, runtime bool) {
 
 	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
 	if err != nil {
@@ -49,13 +57,115 @@ func (s *Server) loadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = pcfg.LoadToRuntime(s.psqlAdminDb)
+	if runtime {
+		err = pcfg.LoadToRuntime(s.psqlAdminDb)
+	} else {
+		err = pcfg.LoadToMemory(s.psqlAdminDb)
+	}
+
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
 	w.Write([]byte(`{"success":"true"}`))
+}
+
+func (s *Server) handleMysqlUsers(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	var users []admin.MysqlUser
+	var err error
+
+	if runtime {
+		users, err = admin.SelectRuntimeMysqlUsers(s.psqlAdminDb)
+	} else {
+		users, err = admin.SelectMysqlUsers(s.psqlAdminDb)
+	}
+
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(users)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) adminMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlUsers(w, r, false)
+}
+
+func (s *Server) adminRuntimeMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlUsers(w, r, true)
+}
+
+func (s *Server) handleMysqlServers(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	var servers []admin.MysqlServer
+	var err error
+
+	if runtime {
+		servers, err = admin.SelectRuntimeMysqlServers(s.psqlAdminDb)
+	} else {
+		servers, err = admin.SelectMysqlServers(s.psqlAdminDb)
+	}
+
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(servers)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) adminMysqlServersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlServers(w, r, false)
+}
+
+func (s *Server) adminRuntimeMysqlServersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlServers(w, r, true)
+}
+
+func (s *Server) handleMysqlQueryRules(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	var rules []admin.MysqlQueryRule
+
+	var err error
+
+	if runtime {
+		rules, err = admin.SelectRuntimeMysqlQueryRules(s.psqlAdminDb)
+	} else {
+		rules, err = admin.SelectMysqlQueryRules(s.psqlAdminDb)
+	}
+
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(rules)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) adminMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlQueryRules(w, r, false)
+}
+
+func (s *Server) adminRuntimeMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlQueryRules(w, r, true)
 }
 
 // handleError provides a uniform way to emit errors out of our handlers. You should ALWAYS call
