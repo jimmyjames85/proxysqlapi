@@ -10,7 +10,6 @@ services:
     ports:
       - "3306:3306"
 
-
   proxysql:
     build:
       context: .
@@ -38,5 +37,4 @@ services:
       - proxysql
     command: >
       bash -c "while ! echo | nc -w1 proxysql 6032 > /dev/null ; do echo waiting for proxysql; sleep 1; done; echo proxysql connected &&
-      mysql -uadmin -padmin -hproxysql -P6032 -e \"set admin-admin_credentials='admin:admin;root:';LOAD ADMIN VARIABLES TO RUNTIME;\" &&
       echo devel ready"
