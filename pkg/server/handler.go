@@ -31,14 +31,107 @@ func (s *Server) configHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(s.cfg.ToJSON()))
 }
 
-// TODO TODO TODO TODO TODO TODO TODO TODO TODO redact sensitive items
-func (s *Server) loadMysqlServersHandler(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) loadMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadMysqlUsers(w, r, false)
+}
 
-// TODO TODO TODO TODO TODO TODO TODO TODO TODO redact sensitive items
-func (s *Server) loadMysqlServersToRuntimeHandler(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) loadMysqlUsersToRuntimeHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadMysqlUsers(w, r, true)
+}
 
-// TODO TODO TODO TODO TODO TODO TODO TODO TODO redact sensitive items
-func (s *Server) handleLoadServers(w http.ResponseWriter, r *http.Request) {}
+func (s *Server) handleLoadMysqlUsers(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
+	if err != nil {
+		s.handleError(w, r, err, http.StatusBadRequest)
+		return
+	} else if userID != 180 {
+		s.handleError(w, r, err, http.StatusForbidden)
+		return
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	var users []admin.MysqlUser
+	err = json.Unmarshal(b, &users)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusBadRequest)
+		return
+	}
+
+	err = admin.SetMysqlUsers(s.psqlAdminDb, users...)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	if runtime {
+		err = admin.LoadMysqlUsersToRuntime(s.psqlAdminDb)
+		if err != nil {
+			s.handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":"true"}`))
+
+}
+
+func (s *Server) loadMysqlServersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadMysqlServers(w, r, false)
+}
+
+func (s *Server) loadMysqlServersToRuntimeHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadMysqlServers(w, r, true)
+}
+
+func (s *Server) handleLoadMysqlServers(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
+	if err != nil {
+		s.handleError(w, r, err, http.StatusBadRequest)
+		return
+	} else if userID != 180 {
+		s.handleError(w, r, err, http.StatusForbidden)
+		return
+	}
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	var servers []admin.MysqlServer
+	err = json.Unmarshal(b, &servers)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusBadRequest)
+		return
+	}
+
+	err = admin.SetMysqlServers(s.psqlAdminDb, servers...)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	if runtime {
+		err = admin.LoadMysqlServersToRuntime(s.psqlAdminDb)
+		if err != nil {
+			s.handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":"true"}`))
+
+}
 
 func (s *Server) loadConfigToRuntimeHandler(w http.ResponseWriter, r *http.Request) {
 	s.handleLoadConfig(w, r, true)
@@ -64,7 +157,9 @@ func (s *Server) handleLoadConfig(w http.ResponseWriter, r *http.Request, runtim
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return
 	}
-	pcfg, err := admin.NewProxysqlConfig(b)
+
+	var pcfg admin.ProxySQLConfig
+	err = json.Unmarshal(b, &pcfg)
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return

@@ -91,11 +91,17 @@ func (s *Server) listen(httpListener net.Listener) {
 	s.httpEndpoints = []Endpoint{
 		// root and healthchecks
 		{Method: "GET", Path: "/", HandlerFunc: s.rootHandler},
-		{Method: "POST", Path: "/load/config/{userID}", HandlerFunc: s.loadConfigHandler},
-		{Method: "POST", Path: "/load/config/to/runtime/{userID}", HandlerFunc: s.loadConfigToRuntimeHandler},
+		// where did my healthcheck go?
 
+		// load to memory
+		{Method: "POST", Path: "/load/config/{userID}", HandlerFunc: s.loadConfigHandler},
 		{Method: "POST", Path: "/load/mysql_servers/{userID}", HandlerFunc: s.loadMysqlServersHandler},
+		{Method: "POST", Path: "/load/mysql_users/{userID}", HandlerFunc: s.loadMysqlUsersHandler},
+
+		// load to runtime
+		{Method: "POST", Path: "/load/config/to/runtime/{userID}", HandlerFunc: s.loadConfigToRuntimeHandler},
 		{Method: "POST", Path: "/load/mysql_servers/to/runtime/{userID}", HandlerFunc: s.loadMysqlServersToRuntimeHandler},
+		{Method: "POST", Path: "/load/mysql_users/to/runtime/{userID}", HandlerFunc: s.loadMysqlUsersToRuntimeHandler},
 
 		// memory tables
 		{Method: "GET", Path: "/admin/mysql_servers", HandlerFunc: s.adminMysqlServersHandler},

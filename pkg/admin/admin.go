@@ -147,7 +147,7 @@ func DropMysqlQueryRules(db *sql.DB) error {
 	return err
 }
 
-func InsertMysqlQueryRules(db *sql.DB, rules ...*MysqlQueryRule) error {
+func InsertMysqlQueryRules(db *sql.DB, rules ...MysqlQueryRule) error {
 	if len(rules) == 0 {
 		return nil
 	}
@@ -223,9 +223,6 @@ func InsertMysqlQueryRules(db *sql.DB, rules ...*MysqlQueryRule) error {
 
 	args := make([]interface{}, colLen*len(rules))
 	for i, r := range rules {
-		if r == nil {
-			return errors.New("cannot insert nil mysql_query_rule")
-		}
 
 		args[colLen*i+0] = r.RuleID
 		args[colLen*i+1] = r.Active
@@ -264,6 +261,19 @@ func InsertMysqlQueryRules(db *sql.DB, rules ...*MysqlQueryRule) error {
 	if err != nil {
 		fmt.Printf("STATEMENT: %s\n\n", stmt)
 		fmt.Printf("len(args): %d\n\n", len(args))
+		return err
+	}
+	return nil
+}
+
+func SetMysqlQueryRules(db *sql.DB, rules ...MysqlQueryRule) error {
+	err := DropMysqlQueryRules(db)
+	if err != nil {
+		return err
+	}
+
+	err = InsertMysqlQueryRules(db, rules...)
+	if err != nil {
 		return err
 	}
 	return nil
@@ -536,7 +546,7 @@ func DropMysqlUsers(db *sql.DB) error {
 	return err
 }
 
-func InsertMysqlUsers(db *sql.DB, users ...*MysqlUser) error {
+func InsertMysqlUsers(db *sql.DB, users ...MysqlUser) error {
 	if len(users) == 0 {
 		return nil
 	}
@@ -560,9 +570,7 @@ func InsertMysqlUsers(db *sql.DB, users ...*MysqlUser) error {
 
 	args := make([]interface{}, colLen*len(users))
 	for i, u := range users {
-		if u == nil {
-			return errors.New("cannot insert nil mysql_user")
-		} else if u.Username == nil {
+		if u.Username == nil {
 			return errors.New("username cannot be nil")
 		}
 		args[colLen*i+0] = u.Username
@@ -584,6 +592,18 @@ func InsertMysqlUsers(db *sql.DB, users ...*MysqlUser) error {
 		return err
 	}
 
+	return nil
+}
+
+func SetMysqlUsers(db *sql.DB, users ...MysqlUser) error {
+	err := DropMysqlUsers(db)
+	if err != nil {
+		return err
+	}
+	err = InsertMysqlUsers(db, users...)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -740,7 +760,7 @@ func DropMysqlServerHostgroup(db *sql.DB, hostgroupID int) error {
 	return err
 }
 
-func InsertMysqlServers(db *sql.DB, servers ...*MysqlServer) error {
+func InsertMysqlServers(db *sql.DB, servers ...MysqlServer) error {
 	if len(servers) == 0 {
 		return nil
 	}
@@ -763,9 +783,7 @@ func InsertMysqlServers(db *sql.DB, servers ...*MysqlServer) error {
 
 	args := make([]interface{}, colLen*len(servers))
 	for i, s := range servers {
-		if s == nil {
-			return errors.New("cannot insert nil mysql_server")
-		} else if s.Hostname == nil {
+		if s.Hostname == nil {
 			return errors.New("hostname cannot be nil")
 		}
 		args[colLen*i+0] = s.HostgroupID
@@ -786,6 +804,18 @@ func InsertMysqlServers(db *sql.DB, servers ...*MysqlServer) error {
 		return err
 	}
 
+	return nil
+}
+
+func SetMysqlServers(db *sql.DB, servers ...MysqlServer) error {
+	err := DropMysqlServers(db)
+	if err != nil {
+		return err
+	}
+	err = InsertMysqlServers(db, servers...)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -935,19 +965,10 @@ func UpdateGlobalVariable(db *sql.DB, name, value string) error {
 // Config
 
 type ProxySQLConfig struct {
-	MysqlQueryRules []*MysqlQueryRule `json:"mysql_query_rules"`
-	MysqlServers    []*MysqlServer    `json:"mysql_servers"`
-	MysqlUsers      []*MysqlUser      `json:"mysql_users"`
+	MysqlQueryRules []MysqlQueryRule  `json:"mysql_query_rules"`
+	MysqlServers    []MysqlServer     `json:"mysql_servers"`
+	MysqlUsers      []MysqlUser       `json:"mysql_users"`
 	GlobalVariables map[string]string `json:"global_variables"`
-}
-
-func NewProxysqlConfig(b []byte) (*ProxySQLConfig, error) {
-	var c ProxySQLConfig
-	err := json.Unmarshal(b, &c)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
 }
 
 func LoadProxySQLConfigFile(filename string) (*ProxySQLConfig, error) {
@@ -965,42 +986,32 @@ func LoadProxySQLConfigFile(filename string) (*ProxySQLConfig, error) {
 		return nil, err
 	}
 
-	return NewProxysqlConfig(b)
+	var pcfg ProxySQLConfig
+	err = json.Unmarshal(b, &pcfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pcfg, nil
 }
 
 func (c *ProxySQLConfig) LoadToMemory(db *sql.DB) error {
 	// TODO on any error attempt to load runtime variables to memory ( :/ there is no LOAD RUNTIME TO MEMORY cmd )
 
-	err := DropMysqlServers(db)
-	if err != nil {
-		return err
-	}
-	err = InsertMysqlServers(db, c.MysqlServers...)
-	if err != nil {
+	if err := SetMysqlServers(db, c.MysqlServers...); err != nil {
 		return err
 	}
 
-	err = DropMysqlUsers(db)
-	if err != nil {
-		return err
-	}
-	err = InsertMysqlUsers(db, c.MysqlUsers...)
-	if err != nil {
+	if err := SetMysqlUsers(db, c.MysqlUsers...); err != nil {
 		return err
 	}
 
-	err = DropMysqlQueryRules(db)
-	if err != nil {
-		return err
-	}
-
-	err = InsertMysqlQueryRules(db, c.MysqlQueryRules...)
-	if err != nil {
+	if err := SetMysqlQueryRules(db, c.MysqlQueryRules...); err != nil {
 		return err
 	}
 
 	for name, value := range c.GlobalVariables {
-		err = UpdateGlobalVariable(db, name, value)
+		err := UpdateGlobalVariable(db, name, value)
 		if err != nil {
 			return err
 		}

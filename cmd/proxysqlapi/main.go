@@ -75,7 +75,7 @@ func printMysqlServers(db *sql.DB, runtime bool) {
 	}
 }
 
-func insertSomeMysqlServers(db *sql.DB, servers []*admin.MysqlServer) {
+func insertSomeMysqlServers(db *sql.DB, servers []admin.MysqlServer) {
 	printHeader("InsertMysqlServers")
 	err := admin.InsertMysqlServers(db, servers...)
 	if err != nil {
@@ -131,13 +131,13 @@ func insertSomeMysqlUsers(db *sql.DB) {
 	}
 
 	names := []string{"jim", "ron", "dharmik", "anthony", "eric", "david", "dustin"}
-	var arr []*admin.MysqlUser
+	var arr []admin.MysqlUser
 
 	for _, n := range names {
 		u := admin.NewMysqlUser(n)
 		p := strings.Repeat(n, 2)
 		u.Password = &p
-		arr = append(arr, u)
+		arr = append(arr, *u)
 	}
 
 	err = admin.InsertMysqlUsers(db, arr...)

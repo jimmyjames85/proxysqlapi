@@ -5,7 +5,7 @@
             "hostname": "ro.foo.database.net",
             "port": 3306,
             "max_connections": 100,
-            "comment": "foo read only"
+            "comment": "foo READ only"
         },
         {
             "hostgroup_id": 2,
@@ -19,17 +19,11 @@
         {
             "username": "howdy partner",
             "password": "ruhroh",
-	    "active": 0
+	    "active": 1
         },
         {
             "username": "donald",
-            "password": "frontend",
-	    "backend": 0,
-	    "frontend": 0
-        },
-        {
-            "username": "donald",
-            "password": "backend",
+            "password": "duck",
 	    "backend": 1
         }
     ],
