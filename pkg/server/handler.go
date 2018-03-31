@@ -333,6 +333,81 @@ func (s *Server) handleGlobalVariables(w http.ResponseWriter, r *http.Request, r
 	w.Write(b)
 }
 
+func (s *Server) statsMysqlConnectionPoolHandler(w http.ResponseWriter, r *http.Request) {
+	connPool, err := admin.SelectStatsMysqlConnectionPool(s.psqlAdminDb)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(connPool)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) statsMysqlGlobalHandler(w http.ResponseWriter, r *http.Request) {
+	mysqlGlobal, err := admin.SelectStatsMysqlGlobal(s.psqlAdminDb)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(mysqlGlobal)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) statsMysqlQueryDigestHandler(w http.ResponseWriter, r *http.Request) {
+	queryDigest, err := admin.SelectStatsMysqlQueryDigest(s.psqlAdminDb)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(queryDigest)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) statsMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Request) {
+	queryDigest, err := admin.SelectStatsMysqlQueryRules(s.psqlAdminDb)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(queryDigest)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) _TEMPLATEstatsMysqlConnectionPoolHandler(w http.ResponseWriter, r *http.Request) {
+	connPool, err := admin.SelectStatsMysqlConnectionPool(s.psqlAdminDb)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(connPool)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
 // handleError provides a uniform way to emit errors out of our handlers. You should ALWAYS call
 // return after calling it.
 func (s *Server) handleError(w http.ResponseWriter, r *http.Request, err error, statusCode int) {

@@ -116,6 +116,24 @@ func (s *Server) listen(httpListener net.Listener) {
 		{Method: "GET", Path: "/admin/runtime/mysql_query_rules", HandlerFunc: s.adminRuntimeMysqlQueryRulesHandler},
 		{Method: "GET", Path: "/admin/runtime/global_variables", HandlerFunc: s.adminRuntimeGlobalVariablesHandler},
 
+		// stats tables
+		{Method: "GET", Path: "/stats/mysql_connection_pool", HandlerFunc: s.statsMysqlConnectionPoolHandler},
+		{Method: "GET", Path: "/stats/mysql_global", HandlerFunc: s.statsMysqlGlobalHandler},
+		{Method: "GET", Path: "/stats/mysql_query_digest", HandlerFunc: s.statsMysqlQueryDigestHandler},
+		{Method: "GET", Path: "/stats/mysql_query_rules", HandlerFunc: s.statsMysqlQueryRulesHandler},
+
+		//{Method: "GET", Path: "/stats/mysql_users", HandlerFunc: s.statsMysqlUsersHandler},
+		//{Method: "GET", Path: "/stats/proxysql_servers_checksums", HandlerFunc: s.statsProxysqlServersChecksums},
+		//{Method: "GET", Path: "/stats/proxysql_servers_metrics", HandlerFunc: s.statsProxysqlServersMetrics},
+		//{Method: "GET", Path: "/stats/proxysql_servers_status", HandlerFunc: s.statsProxysqlServersStatus},
+		//{Method: "GET", Path: "/stats/memory_metrics", HandlerFunc: s.statsMemoryMetrics},
+		//{Method: "GET", Path: "/stats/mysql_commands_counters", HandlerFunc: s.statsmysqlCommandsCounters},
+		//{Method: "GET", Path: "/stats/mysql_prepared_statements_info", HandlerFunc: s.stats mysql preparedStatementsInfo},
+		//{Method: "GET", Path: "/stats/mysql_processlist", HandlerFunc: s.statsMysqlProcesslist},
+		//{Method: "GET", Path: "/stats/proxysql_servers_checksums", HandlerFunc: s.stats proxysqlServersChecksums},
+		//{Method: "GET", Path: "/stats/proxysql_servers_metrics", HandlerFunc: s.stats proxysqlServersMetrics},
+		//{Method: "GET", Path: "/stats/proxysql_servers_status", HandlerFunc: s.stats proxysqlServersStatus},
+
 		// pprof
 		{Method: "GET", Path: "/debug/config", HandlerFunc: s.configHandler},
 		{Method: "GET", Path: "/debug/pprof/cmdline", HandlerFunc: pprof.Cmdline},

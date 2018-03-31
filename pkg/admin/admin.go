@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 )
@@ -152,39 +153,6 @@ func InsertMysqlQueryRules(db *sql.DB, rules ...MysqlQueryRule) error {
 	}
 	colLen := 31
 	tpl := fmt.Sprintf("(?%s)", strings.Repeat(",?", colLen-1))
-
-	// rule_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-	//     active INT CHECK (active IN (0,1)) NOT NULL DEFAULT 0,
-	//     username VARCHAR,
-	//     schemaname VARCHAR,
-	//     flagIN INT NOT NULL DEFAULT 0,
-	//     client_addr VARCHAR,
-	//     proxy_addr VARCHAR,
-	//     proxy_port INT,
-	//     digest VARCHAR,
-	//     match_digest VARCHAR,
-	//     match_pattern VARCHAR,
-	//     negate_match_pattern INT CHECK (negate_match_pattern IN (0,1)) NOT NULL DEFAULT 0,
-	//     re_modifiers VARCHAR DEFAULT 'CASELESS',
-	//     flagOUT INT,
-	//     replace_pattern VARCHAR,
-	//     destination_hostgroup INT DEFAULT NULL,
-	//     cache_ttl INT CHECK(cache_ttl > 0),
-	//     reconnect INT CHECK (reconnect IN (0,1)) DEFAULT NULL,
-	//     timeout INT UNSIGNED,
-	//     retries INT CHECK (retries>=0 AND retries <=1000),
-	//     delay INT UNSIGNED,
-	//     next_query_flagIN INT UNSIGNED,
-	//     mirror_flagOUT INT UNSIGNED,
-	//     mirror_hostgroup INT UNSIGNED,
-	//     error_msg VARCHAR,
-	//     OK_msg VARCHAR,
-	//     sticky_conn INT CHECK (sticky_conn IN (0,1)),
-	//     multiplex INT CHECK (multiplex IN (0,1,2)),
-	//     log INT CHECK (log IN (0,1)),
-	//     apply INT CHECK(apply IN (0,1)) NOT NULL DEFAULT 0,
-	//     comment VARCHAR)
-
 	stmt := `INSERT INTO mysql_query_rules (
 		 rule_id,
 		 active,
@@ -222,7 +190,7 @@ func InsertMysqlQueryRules(db *sql.DB, rules ...MysqlQueryRule) error {
 
 	args := make([]interface{}, colLen*len(rules))
 	for i, r := range rules {
-
+		log.Printf("%s\n\n", r.ToJSON())
 		args[colLen*i+0] = r.RuleID
 		args[colLen*i+1] = r.Active
 		args[colLen*i+2] = r.Username
@@ -255,8 +223,8 @@ func InsertMysqlQueryRules(db *sql.DB, rules ...MysqlQueryRule) error {
 		args[colLen*i+29] = r.Apply
 		args[colLen*i+30] = r.Comment
 	}
-	_, err := db.Exec(stmt, args...)
 
+	_, err := db.Exec(stmt, args...)
 	if err != nil {
 		fmt.Printf("STATEMENT: %s\n\n", stmt)
 		fmt.Printf("len(args): %d\n\n", len(args))
@@ -412,46 +380,46 @@ func selectMysqlQueryRules(db *sql.DB, runtime bool) ([]MysqlQueryRule, error) {
 			r.Comment = &comment.String
 		}
 		if proxyPort.Valid {
-			*r.ProxyPort = int(proxyPort.Int64)
+			r.ProxyPort = ptrint(int(proxyPort.Int64))
 		}
 		if flagout.Valid {
-			*r.Flagout = int(flagout.Int64)
+			r.Flagout = ptrint(int(flagout.Int64))
 		}
 		if destinationHostgroup.Valid {
-			*r.DestinationHostgroup = int(destinationHostgroup.Int64)
+			r.DestinationHostgroup = ptrint(int(destinationHostgroup.Int64))
 		}
 		if cacheTTL.Valid {
-			*r.CacheTTL = int(cacheTTL.Int64)
+			r.CacheTTL = ptrint(int(cacheTTL.Int64))
 		}
 		if reconnect.Valid {
-			*r.Reconnect = int(reconnect.Int64)
+			r.Reconnect = ptrint(int(reconnect.Int64))
 		}
 		if timeout.Valid {
-			*r.Timeout = int(timeout.Int64)
+			r.Timeout = ptrint(int(timeout.Int64))
 		}
 		if retries.Valid {
-			*r.Retries = int(retries.Int64)
+			r.Retries = ptrint(int(retries.Int64))
 		}
 		if delay.Valid {
-			*r.Delay = int(delay.Int64)
+			r.Delay = ptrint(int(delay.Int64))
 		}
 		if nextQueryFlagIN.Valid {
-			*r.NextQueryFlagIN = int(nextQueryFlagIN.Int64)
+			r.NextQueryFlagIN = ptrint(int(nextQueryFlagIN.Int64))
 		}
 		if mirrorFlagOUT.Valid {
-			*r.MirrorFlagOUT = int(mirrorFlagOUT.Int64)
+			r.MirrorFlagOUT = ptrint(int(mirrorFlagOUT.Int64))
 		}
 		if mirrorHostgroup.Valid {
-			*r.MirrorHostgroup = int(mirrorHostgroup.Int64)
+			r.MirrorHostgroup = ptrint(int(mirrorHostgroup.Int64))
 		}
 		if stickyConn.Valid {
-			*r.StickyConn = int(stickyConn.Int64)
+			r.StickyConn = ptrint(int(stickyConn.Int64))
 		}
 		if multiplex.Valid {
-			*r.Multiplex = int(multiplex.Int64)
+			r.Multiplex = ptrint(int(multiplex.Int64))
 		}
 		if log.Valid {
-			*r.Log = int(log.Int64)
+			r.Log = ptrint(int(log.Int64))
 		}
 
 		ret = append(ret, r)
@@ -462,6 +430,8 @@ func selectMysqlQueryRules(db *sql.DB, runtime bool) ([]MysqlQueryRule, error) {
 	}
 	return ret, nil
 }
+
+func ptrint(i int) *int { return &i }
 
 /*//////////////////////////////////////////////////////////////////////*/
 
