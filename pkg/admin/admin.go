@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 )
@@ -911,10 +910,21 @@ func LoadAdminVariablesToRuntime(db *sql.DB) error {
 	return err
 }
 
-func SetGlobalVariable(db *sql.DB, name, value string) error {
+func UpdateGlobalVariable(db *sql.DB, name, value string) error {
 	stmt := `UPDATE global_variables SET variable_value=? WHERE variable_name=?;`
 	_, err := db.Exec(stmt, value, name)
 	return err
+}
+
+func UpdateGlobalVariables(db *sql.DB, globalVariables map[string]string) error {
+	// TODO how do I batch update in mysql
+	for name, value := range globalVariables {
+		err := UpdateGlobalVariable(db, name, value)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func SelectRuntimeGlobalVariables(db *sql.DB) (map[string]string, error) {
@@ -950,15 +960,6 @@ func selectGlobalVariables(db *sql.DB, runtime bool) (map[string]string, error) 
 		return ret, err
 	}
 	return ret, nil
-}
-
-func UpdateGlobalVariable(db *sql.DB, name, value string) error {
-	stmt := `UPDATE global_variables SET variable_value=? WHERE variable_name=?;`
-	_, err := db.Exec(stmt, value, name)
-	if err != nil {
-		log.Printf("WTF----------------------\n\n%s %s %s\n\n", name, value, stmt)
-	}
-	return err
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -1010,11 +1011,8 @@ func (c *ProxySQLConfig) LoadToMemory(db *sql.DB) error {
 		return err
 	}
 
-	for name, value := range c.GlobalVariables {
-		err := UpdateGlobalVariable(db, name, value)
-		if err != nil {
-			return err
-		}
+	if err := UpdateGlobalVariables(db, c.GlobalVariables); err != nil {
+		return err
 	}
 
 	return nil

@@ -31,6 +31,48 @@ func (s *Server) configHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(s.cfg.ToJSON()))
 }
 
+func (s *Server) loadGlobalVariablesHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadGlobalVariables(w, r, false)
+}
+
+func (s *Server) loadGlobalVariablesToRuntimeHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadGlobalVariables(w, r, true)
+}
+
+func (s *Server) handleLoadGlobalVariables(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	var globalVariables map[string]string
+	err = json.Unmarshal(b, &globalVariables)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusBadRequest)
+		return
+	}
+
+	err = admin.UpdateGlobalVariables(s.psqlAdminDb, globalVariables)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	if runtime {
+		err = admin.LoadAdminVariablesToRuntime(s.psqlAdminDb)
+		if err != nil {
+			s.handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":"true"}`))
+
+}
+
 func (s *Server) loadMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
 	s.handleLoadMysqlUsers(w, r, false)
 }
@@ -40,15 +82,6 @@ func (s *Server) loadMysqlUsersToRuntimeHandler(w http.ResponseWriter, r *http.R
 }
 
 func (s *Server) handleLoadMysqlUsers(w http.ResponseWriter, r *http.Request, runtime bool) {
-
-	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
-	if err != nil {
-		s.handleError(w, r, err, http.StatusBadRequest)
-		return
-	} else if userID != 180 {
-		s.handleError(w, r, err, http.StatusForbidden)
-		return
-	}
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -91,15 +124,6 @@ func (s *Server) loadMysqlServersToRuntimeHandler(w http.ResponseWriter, r *http
 }
 
 func (s *Server) handleLoadMysqlServers(w http.ResponseWriter, r *http.Request, runtime bool) {
-
-	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
-	if err != nil {
-		s.handleError(w, r, err, http.StatusBadRequest)
-		return
-	} else if userID != 180 {
-		s.handleError(w, r, err, http.StatusForbidden)
-		return
-	}
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -180,6 +204,14 @@ func (s *Server) handleLoadConfig(w http.ResponseWriter, r *http.Request, runtim
 	w.Write([]byte(`{"success":"true"}`))
 }
 
+func (s *Server) adminMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlUsers(w, r, false)
+}
+
+func (s *Server) adminRuntimeMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlUsers(w, r, true)
+}
+
 func (s *Server) handleMysqlUsers(w http.ResponseWriter, r *http.Request, runtime bool) {
 
 	var users []admin.MysqlUser
@@ -204,12 +236,12 @@ func (s *Server) handleMysqlUsers(w http.ResponseWriter, r *http.Request, runtim
 	w.Write(b)
 }
 
-func (s *Server) adminMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleMysqlUsers(w, r, false)
+func (s *Server) adminMysqlServersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlServers(w, r, false)
 }
 
-func (s *Server) adminRuntimeMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleMysqlUsers(w, r, true)
+func (s *Server) adminRuntimeMysqlServersHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlServers(w, r, true)
 }
 
 func (s *Server) handleMysqlServers(w http.ResponseWriter, r *http.Request, runtime bool) {
@@ -236,12 +268,12 @@ func (s *Server) handleMysqlServers(w http.ResponseWriter, r *http.Request, runt
 	w.Write(b)
 }
 
-func (s *Server) adminMysqlServersHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleMysqlServers(w, r, false)
+func (s *Server) adminMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlQueryRules(w, r, false)
 }
 
-func (s *Server) adminRuntimeMysqlServersHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleMysqlServers(w, r, true)
+func (s *Server) adminRuntimeMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleMysqlQueryRules(w, r, true)
 }
 
 func (s *Server) handleMysqlQueryRules(w http.ResponseWriter, r *http.Request, runtime bool) {
@@ -269,12 +301,36 @@ func (s *Server) handleMysqlQueryRules(w http.ResponseWriter, r *http.Request, r
 	w.Write(b)
 }
 
-func (s *Server) adminMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleMysqlQueryRules(w, r, false)
+func (s *Server) adminGlobalVariablesHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleGlobalVariables(w, r, false)
 }
 
-func (s *Server) adminRuntimeMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Request) {
-	s.handleMysqlQueryRules(w, r, true)
+func (s *Server) adminRuntimeGlobalVariablesHandler(w http.ResponseWriter, r *http.Request) {
+	s.handleGlobalVariables(w, r, true)
+}
+
+func (s *Server) handleGlobalVariables(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	var globalVariables map[string]string
+	var err error
+
+	if runtime {
+		globalVariables, err = admin.SelectRuntimeGlobalVariables(s.psqlAdminDb)
+	} else {
+		globalVariables, err = admin.SelectGlobalVariables(s.psqlAdminDb)
+	}
+
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(globalVariables)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
 }
 
 // handleError provides a uniform way to emit errors out of our handlers. You should ALWAYS call

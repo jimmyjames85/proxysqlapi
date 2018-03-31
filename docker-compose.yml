@@ -10,6 +10,24 @@ services:
     ports:
       - "3306:3306"
 
+  # mysql_02:
+  #   image: percona:5.5
+  #   environment:
+  #     - MYSQL_ALLOW_EMPTY_PASSWORD=1
+  #   expose:
+  #     - "33062"
+  #   ports:
+  #     - "33062:33062"
+
+  # mysql_03:
+  #   image: percona:5.5
+  #   environment:
+  #     - MYSQL_ALLOW_EMPTY_PASSWORD=1
+  #   expose:
+  #     - "33063"
+  #   ports:
+  #     - "33063:33063"
+
   proxysql:
     build:
       context: .

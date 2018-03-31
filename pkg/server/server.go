@@ -73,7 +73,6 @@ func (s *Server) Serve() error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer s.psqlAdminDb.Close()
 
 	httpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.cfg.Port))
 	if err != nil {
@@ -91,26 +90,31 @@ func (s *Server) listen(httpListener net.Listener) {
 	s.httpEndpoints = []Endpoint{
 		// root and healthchecks
 		{Method: "GET", Path: "/", HandlerFunc: s.rootHandler},
-		// where did my healthcheck go?
+		// TODO where did my healthcheck go?!?!?
 
 		// load to memory
 		{Method: "POST", Path: "/load/config/{userID}", HandlerFunc: s.loadConfigHandler},
-		{Method: "POST", Path: "/load/mysql_servers/{userID}", HandlerFunc: s.loadMysqlServersHandler},
-		{Method: "POST", Path: "/load/mysql_users/{userID}", HandlerFunc: s.loadMysqlUsersHandler},
+		{Method: "POST", Path: "/load/mysql_servers", HandlerFunc: s.loadMysqlServersHandler},
+		{Method: "POST", Path: "/load/mysql_users", HandlerFunc: s.loadMysqlUsersHandler},
+		{Method: "POST", Path: "/load/global_variables", HandlerFunc: s.loadGlobalVariablesHandler},
 
 		// load to runtime
 		{Method: "POST", Path: "/load/config/to/runtime/{userID}", HandlerFunc: s.loadConfigToRuntimeHandler},
-		{Method: "POST", Path: "/load/mysql_servers/to/runtime/{userID}", HandlerFunc: s.loadMysqlServersToRuntimeHandler},
-		{Method: "POST", Path: "/load/mysql_users/to/runtime/{userID}", HandlerFunc: s.loadMysqlUsersToRuntimeHandler},
+		{Method: "POST", Path: "/load/mysql_servers/to/runtime", HandlerFunc: s.loadMysqlServersToRuntimeHandler},
+		{Method: "POST", Path: "/load/mysql_users/to/runtime", HandlerFunc: s.loadMysqlUsersToRuntimeHandler},
+		{Method: "POST", Path: "/load/global_variables/to/runtime", HandlerFunc: s.loadGlobalVariablesToRuntimeHandler},
 
 		// memory tables
 		{Method: "GET", Path: "/admin/mysql_servers", HandlerFunc: s.adminMysqlServersHandler},
 		{Method: "GET", Path: "/admin/mysql_users", HandlerFunc: s.adminMysqlUsersHandler},
 		{Method: "GET", Path: "/admin/mysql_query_rules", HandlerFunc: s.adminMysqlQueryRulesHandler},
+		{Method: "GET", Path: "/admin/global_variables", HandlerFunc: s.adminGlobalVariablesHandler},
+
 		// runtime tables
 		{Method: "GET", Path: "/admin/runtime/mysql_servers", HandlerFunc: s.adminRuntimeMysqlServersHandler},
 		{Method: "GET", Path: "/admin/runtime/mysql_users", HandlerFunc: s.adminRuntimeMysqlUsersHandler},
 		{Method: "GET", Path: "/admin/runtime/mysql_query_rules", HandlerFunc: s.adminRuntimeMysqlQueryRulesHandler},
+		{Method: "GET", Path: "/admin/runtime/global_variables", HandlerFunc: s.adminRuntimeGlobalVariablesHandler},
 
 		// pprof
 		{Method: "GET", Path: "/debug/config", HandlerFunc: s.configHandler},
@@ -155,8 +159,9 @@ func Panic(h http.Handler) http.Handler {
 }
 
 // Close closes all db connections or any other clean up
-func (srv *Server) Close() error {
+func (s *Server) Close() error {
+	defer s.psqlAdminDb.Close()
 
 	// close socket to stop new requests from coming in
-	return srv.httpServer.Close()
+	return s.httpServer.Close()
 }
