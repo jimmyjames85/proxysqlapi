@@ -12,6 +12,8 @@ _obj
 _test
 vendor/**/*_test.go
 vendor/**/vendor/
+data
+
 
 # Architecture specific extensions/prefixes
 *.[568vq]

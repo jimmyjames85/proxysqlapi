@@ -70,6 +70,11 @@ func (s *Server) Serve() error {
 		InterpolateParams: true,
 	}
 	s.psqlAdminDb, err = sql.Open("mysql", dbcfg.FormatDSN())
+	// fmt.Printf("%s\n\n", dbcfg.FormatDSN())
+	// // file:foo.db
+	// // root@tcp(localhost:6032)/
+	// s.psqlAdminDb, err = sql.Open("sqlite3", "file:./data/proxysql.db")
+
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,3 +1,4 @@
+datadir="/var/lib/proxysql"
 admin_variables =
 {
 	admin_credentials = "admin:admin;root:"

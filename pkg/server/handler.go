@@ -423,5 +423,7 @@ func (s *Server) handleError(w http.ResponseWriter, r *http.Request, err error, 
 	m["status_code"] = fmt.Sprintf("%d", statusCode)
 	enc.Encode(m)
 
-	log.Printf("%+v", m) //todo
+	b, _ := json.Marshal(m)
+	log.Printf("%+v", string(b))
+	panic(err)
 }

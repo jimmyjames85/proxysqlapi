@@ -772,7 +772,6 @@ func InsertMysqlServers(db *sql.DB, servers ...MysqlServer) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -970,14 +969,18 @@ func (c *ProxySQLConfig) LoadToMemory(db *sql.DB) error {
 	// TODO on any error attempt to load runtime variables to memory ( :/ there is no LOAD RUNTIME TO MEMORY cmd )
 
 	if err := SetMysqlServers(db, c.MysqlServers...); err != nil {
+		fmt.Printf("\n\nservers?? here!\n\n")
+
 		return err
 	}
 
 	if err := SetMysqlUsers(db, c.MysqlUsers...); err != nil {
+		fmt.Printf("\n\nusers?? here!\n\n")
 		return err
 	}
 
 	if err := SetMysqlQueryRules(db, c.MysqlQueryRules...); err != nil {
+		fmt.Printf("\n\nrules?? here!\n\n")
 		return err
 	}
 
