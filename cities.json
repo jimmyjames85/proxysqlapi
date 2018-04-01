@@ -1,0 +1,45 @@
+{
+    "mysql_users" : [
+	{
+	    "username": "gotham",
+	    "password": "gotham",
+	    "default_hostgroup": 1
+	},
+	{
+	    "username": "newyork",
+	    "password": "newyork",
+	    "default_hostgroup": 2
+	}
+    ],
+    "mysql_servers" : [
+	{
+	    "hostgroup_id": 1,
+	    "comment": "Gothams Finest Database",
+	    "hostname": "gotham",
+	    "port": 3306,
+	    "max_connections": 300
+	},
+	{
+	    "hostgroup_id": 2,
+	    "comment": "New Yorks Finest Database",
+	    "hostname": "newyork",
+	    "port": 3306,
+	    "max_connections": 300
+	}
+    ],
+    "mysql_query_rules": [
+	{
+	    "active": 1,
+	    "apply": 1,
+	    "destination_hostgroup": 1,
+	    "match_pattern": ".* -- gotham$"
+	},
+	{
+	    "active": 1,
+	    "apply": 1,
+	    "destination_hostgroup": 2,
+	    "match_pattern": ".* -- newyork$"
+	}
+    ],
+    "global_variables" : { }
+}
