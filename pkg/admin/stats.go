@@ -232,6 +232,53 @@ func SelectStatsMysqlQueryRules(db *sql.DB) ([]StatsMysqlQueryRules, error) {
 	return ret, nil
 }
 
+/*
+CREATE TABLE stats_mysql_users (
+    username VARCHAR PRIMARY KEY,
+    frontend_connections INT NOT NULL,
+    frontend_max_connections INT NOT NULL)
+*/
+
+type StatsMysqlUsers struct {
+	Username               string `json:"username"`
+	FrontendConnections    int    `json:"frontend_connections"`
+	FrontendMaxConnections int    `json:"frontend_max_connections"`
+}
+
+func SelectStatsMysqlUsers(db *sql.DB) ([]StatsMysqlUsers, error) {
+	var ret []StatsMysqlUsers
+
+	stmt := `SELECT
+		 username,
+		 frontend_connections,
+		 frontend_max_connections
+		 FROM stats_mysql_users;`
+
+	rows, err := db.Query(stmt)
+	if err != nil {
+		return ret, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var r StatsMysqlUsers
+		err = rows.Scan(
+			&r.Username,
+			&r.FrontendConnections,
+			&r.FrontendMaxConnections,
+		)
+		if err != nil {
+			return ret, err
+		}
+		ret = append(ret, r)
+	}
+	err = rows.Err()
+	if err != nil {
+		return ret, err
+	}
+	return ret, nil
+}
+
 func _TEMPLATESelectStatsMysqlConnectionPool(db *sql.DB) ([]int, error) {
 	var ret []int // some row
 

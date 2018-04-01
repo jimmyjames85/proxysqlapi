@@ -18,7 +18,8 @@ func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 	bw := bufio.NewWriter(w)
 	bw.WriteString("\n\nAvailable Service Endpoints\n===================\n")
 	for _, ep := range s.httpEndpoints {
-		fmt.Fprintf(bw, "\n## %s\n   curl -X %s localhost:%d%s\n", ep.Path, ep.Method, s.cfg.Port, ep.Path)
+		//fmt.Fprintf(bw, "\n## %s\n   curl -X %s localhost:%d%s\n", ep.Path, ep.Method, s.cfg.Port, ep.Path)
+		fmt.Fprintf(bw, "   curl -X %s localhost:%d%s\n", ep.Method, s.cfg.Port, ep.Path)
 	}
 	bw.Flush()
 }
@@ -62,6 +63,48 @@ func (s *Server) handleLoadGlobalVariables(w http.ResponseWriter, r *http.Reques
 
 	if runtime {
 		err = admin.LoadAdminVariablesToRuntime(s.psqlAdminDb)
+		if err != nil {
+			s.handleError(w, r, err, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":"true"}`))
+
+}
+
+func (s *Server) loadMysqlQueryRulesHanlder(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadMysqlQueryRules(w, r, false)
+}
+
+func (s *Server) loadMysqlQueryRulesToRuntimeHanlder(w http.ResponseWriter, r *http.Request) {
+	s.handleLoadMysqlQueryRules(w, r, true)
+}
+
+func (s *Server) handleLoadMysqlQueryRules(w http.ResponseWriter, r *http.Request, runtime bool) {
+
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	var rules []admin.MysqlQueryRule
+	err = json.Unmarshal(b, &rules)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusBadRequest)
+		return
+	}
+
+	err = admin.SetMysqlQueryRules(s.psqlAdminDb, rules...)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+
+	if runtime {
+		err = admin.LoadMysqlQueryRulesToRuntime(s.psqlAdminDb)
 		if err != nil {
 			s.handleError(w, r, err, http.StatusInternalServerError)
 			return
@@ -385,6 +428,21 @@ func (s *Server) statsMysqlQueryRulesHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	b, err := json.Marshal(queryDigest)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+}
+
+func (s *Server) statsMysqlUsersHandler(w http.ResponseWriter, r *http.Request) {
+	users, err := admin.SelectStatsMysqlUsers(s.psqlAdminDb)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(users)
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return
