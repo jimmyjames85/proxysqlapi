@@ -279,6 +279,68 @@ func SelectStatsMysqlUsers(db *sql.DB) ([]StatsMysqlUsers, error) {
 	return ret, nil
 }
 
+/*
+CREATE TABLE mysql_server_ping_log (
+    hostname VARCHAR NOT NULL,
+    port INT NOT NULL DEFAULT 3306,
+    time_start_us INT NOT NULL DEFAULT 0,
+    ping_success_time_us INT DEFAULT 0,
+    ping_error VARCHAR,
+    PRIMARY KEY (hostname, port, time_start_us))
+*/
+
+type MonitorMysqlServerPingLog struct {
+	Hostname          string  `json:"hostname"`
+	Port              int     `json:"port"`
+	TimeStartUS       int     `json:"time_start_us"`
+	PingSuccessTimeUS int     `json:"ping_success_time_us"`
+	PingError         *string `json:"ping_error"`
+}
+
+func SelectMonitorMysqlServerPingLogHandler(db *sql.DB) ([]MonitorMysqlServerPingLog, error) {
+	var ret []MonitorMysqlServerPingLog
+
+	stmt := `SELECT
+		 hostname,
+		 port,
+		 time_start_us,
+		 ping_success_time_us,
+		 ping_error
+		 FROM mysql_server_ping_log;`
+
+	rows, err := db.Query(stmt)
+	if err != nil {
+		return ret, err
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var sqlError sql.NullString
+		var r MonitorMysqlServerPingLog
+		err = rows.Scan(
+			&r.Hostname,
+			&r.Port,
+			&r.TimeStartUS,
+			&r.PingSuccessTimeUS,
+			&sqlError,
+		)
+		if err != nil {
+			return ret, err
+		}
+
+		if sqlError.Valid {
+			r.PingError = &sqlError.String
+		}
+
+		ret = append(ret, r)
+	}
+	err = rows.Err()
+	if err != nil {
+		return ret, err
+	}
+	return ret, nil
+}
+
 func _TEMPLATESelectStatsMysqlConnectionPool(db *sql.DB) ([]int, error) {
 	var ret []int // some row
 

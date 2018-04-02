@@ -2,11 +2,16 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
+	m "github.com/jimmyjames85/proxysqlapi/pkg/metrics"
 	"github.com/jimmyjames85/proxysqlapi/pkg/server"
 	"github.com/kelseyhightower/envconfig"
 )
@@ -148,6 +153,27 @@ func insertSomeMysqlUsers(db *sql.DB) {
 }
 
 func main() {
+
+	metricsCfg := m.Config{}
+	envconfig.MustProcess("PROXYSQLAPI", &metricsCfg) // todo get better with this config maybe pass it in
+	b, _ := json.Marshal(metricsCfg)
+	fmt.Printf("metricsDbCfg: %s\n", string(b))
+	hostname, _ := os.Hostname()
+	ghost := "127.0.0.1"
+	gport := 2003
+	gaddr := fmt.Sprintf("%s:%d", ghost, gport)
+	addr, err := net.ResolveTCPAddr("tcp", gaddr)
+	if err != nil {
+		log.Fatalf("%s\n", err)
+	}
+	emitter := m.NewEmitter(metricsCfg, nil, 10*time.Second, fmt.Sprintf("fix.this.%s", hostname), addr)
+	go func() {
+		eerr := emitter.Serve()
+		if eerr != nil {
+			log.Fatalf("%s", eerr)
+		}
+	}()
+
 	cfg := server.Config{}
 	envconfig.MustProcess("PROXYSQLAPI", &cfg)
 	srv, err := server.New(cfg)
@@ -162,4 +188,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not start server: %v", err)
 	}
+
 }

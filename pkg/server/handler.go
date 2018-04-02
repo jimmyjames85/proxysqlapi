@@ -449,6 +449,22 @@ func (s *Server) statsMysqlUsersHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(b)
+
+}
+
+func (s *Server) monitorMysqlServerPingLogHandler(w http.ResponseWriter, r *http.Request) {
+	pingLog, err := admin.SelectMonitorMysqlServerPingLogHandler(s.psqlAdminDb)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	b, err := json.Marshal(pingLog)
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
 }
 
 func (s *Server) _TEMPLATEstatsMysqlConnectionPoolHandler(w http.ResponseWriter, r *http.Request) {

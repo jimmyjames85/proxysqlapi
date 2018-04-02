@@ -152,6 +152,13 @@ func (s *Server) listen(httpListener net.Listener) {
 		//{Method: "GET", Path: "/stats/proxysql_servers_metrics", HandlerFunc: s.statsProxysqlServersMetricsHandler},
 		//{Method: "GET", Path: "/stats/proxysql_servers_status", HandlerFunc: s.statsProxysqlServersStatusHandler},
 
+		// monitor tables
+		//{Method: "GET", Path: "/monitor/mysql_server_connect_log", HandlerFunc: s.monitorMysqlServerConnectLogHandler},
+		//{Method: "GET", Path: "/monitor/mysql_server_group_replication_log", HandlerFunc: s.monitorMysqlServerGroupReplicationLogHandler},
+		{Method: "GET", Path: "/monitor/mysql_server_ping_log", HandlerFunc: s.monitorMysqlServerPingLogHandler},
+		//{Method: "GET", Path: "/monitor/mysql_server_read_only_log", HandlerFunc: s.monitorMysqlServerReadOnlyLogHandler},
+		//{Method: "GET", Path: "/monitor/mysql_server_replication_lag_log", HandlerFunc: s.monitorMysqlServerReplicationLagLogHandler},
+
 		// pprof
 		{Method: "GET", Path: "/debug/config", HandlerFunc: s.configHandler},
 		{Method: "GET", Path: "/debug/pprof/cmdline", HandlerFunc: pprof.Cmdline},

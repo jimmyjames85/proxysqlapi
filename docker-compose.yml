@@ -85,6 +85,7 @@ services:
       - gotham
       - newyork
       - proxysql
+      - graphite
     command: >
       bash -c "
       while ! echo | nc -w1 gotham 3306 > /dev/null ; do printf 'waiting for gotham: '; sleep 1; done; echo gotham connected &&
