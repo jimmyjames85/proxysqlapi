@@ -26,6 +26,12 @@
   version = "v1.3.0"
 
 [[projects]]
+  name = "github.com/patrickmn/go-cache"
+  packages = ["."]
+  revision = "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0"
+  version = "v2.1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
@@ -34,6 +40,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8fbda0773a5b53ca8414a0290b4fa9df5972adf5b62c0f80ce9e784dda6c9a1e"
+  inputs-digest = "9f490b37f318275c4c1d93f18c7b74106e636250daf761e7b30a6c4e734647e3"
   solver-name = "gps-cdcl"
   solver-version = 1

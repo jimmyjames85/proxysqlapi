@@ -15,20 +15,19 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/go-sql-driver/mysql"
+	"github.com/jimmyjames85/proxysqlapi/pkg/common"
 )
 
 type Config struct {
-	Port int `envconfig:"PORT" required:"false" default:"16032"` // port to run on
+	common.DBConfig
 
-	DBuser string `envconfig:"DB_USER" default:"root"`
-	DBPswd string `envconfig:"DB_PASS" default:""`
-	DBHost string `envconfig:"DB_HOST" default:"localhost"`
-	DBPort int    `envconfig:"DB_PORT" default:"6032"`
+	Port int `envconfig:"PORT" required:"false" default:"16032"` // port to run on
 }
 
 func (c *Config) ToJSON() string {
-	// TODO redact sensitive information
-	b, _ := json.Marshal(c)
+	copy := *c
+	copy.DBPswd = "****"
+	b, _ := json.Marshal(copy)
 	return string(b)
 }
 
@@ -70,10 +69,6 @@ func (s *Server) Serve() error {
 		InterpolateParams: true,
 	}
 	s.psqlAdminDb, err = sql.Open("mysql", dbcfg.FormatDSN())
-	// fmt.Printf("%s\n\n", dbcfg.FormatDSN())
-	// // file:foo.db
-	// // root@tcp(localhost:6032)/
-	// s.psqlAdminDb, err = sql.Open("sqlite3", "file:./data/proxysql.db")
 
 	if err != nil {
 		log.Fatal(err)
@@ -204,7 +199,6 @@ func Panic(h http.Handler) http.Handler {
 // Close closes all db connections or any other clean up
 func (s *Server) Close() error {
 	defer s.psqlAdminDb.Close()
-
 	// close socket to stop new requests from coming in
 	return s.httpServer.Close()
 }
