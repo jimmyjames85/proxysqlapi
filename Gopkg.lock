@@ -2,12 +2,6 @@
 
 
 [[projects]]
-  branch = "master"
-  name = "github.com/cyberdelia/go-metrics-graphite"
-  packages = ["."]
-  revision = "39f87cc3b432bbb898d7c643c0e93cac2bc865ad"
-
-[[projects]]
   name = "github.com/go-chi/chi"
   packages = ["."]
   revision = "e83ac2304db3c50cf03d96a2fcd39009d458bc35"
@@ -25,21 +19,9 @@
   revision = "f611eb38b3875cc3bd991ca91c51d06446afa14c"
   version = "v1.3.0"
 
-[[projects]]
-  name = "github.com/patrickmn/go-cache"
-  packages = ["."]
-  revision = "a3647f8e31d79543b2d0f0ae2fe5c379d72cedc0"
-  version = "v2.1.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/rcrowley/go-metrics"
-  packages = ["."]
-  revision = "8732c616f52954686704c8645fe1a9d59e9df7c1"
-
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9f490b37f318275c4c1d93f18c7b74106e636250daf761e7b30a6c4e734647e3"
+  inputs-digest = "775167868e0d4b43e1c7636aa75271751dd116ec7d050ad63543233d72253579"
   solver-name = "gps-cdcl"
   solver-version = 1
