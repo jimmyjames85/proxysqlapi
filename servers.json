@@ -1,0 +1,14 @@
+[
+    {
+        "hostgroup_id": 1,
+        "comment": "Gothams Finest Database",
+        "hostname": "gotham.com",
+        "port": 33306,
+        "max_connections": 300
+    },
+    {
+        "hostgroup_id": 2,
+        "comment": "New Yorks Finest Database",
+        "hostname": "newyork.com"
+    }
+]

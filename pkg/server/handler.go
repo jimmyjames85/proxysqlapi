@@ -7,9 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi"
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
 )
 
@@ -209,16 +207,6 @@ func (s *Server) loadConfigHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLoadConfig(w http.ResponseWriter, r *http.Request, runtime bool) {
-
-	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
-	if err != nil {
-		s.handleError(w, r, err, http.StatusBadRequest)
-		return
-	} else if userID != 180 {
-		s.handleError(w, r, err, http.StatusForbidden)
-		return
-	}
-
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
@@ -270,6 +258,10 @@ func (s *Server) handleMysqlUsers(w http.ResponseWriter, r *http.Request, runtim
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return
 	}
+	if users == nil {
+		// better to return empty array than null
+		users = make([]admin.MysqlUser, 0)
+	}
 	b, err := json.Marshal(users)
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
@@ -301,6 +293,10 @@ func (s *Server) handleMysqlServers(w http.ResponseWriter, r *http.Request, runt
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return
+	}
+	if servers == nil {
+		// better to return empty array than null
+		servers = make([]admin.MysqlServer, 0)
 	}
 	b, err := json.Marshal(servers)
 	if err != nil {
@@ -334,6 +330,10 @@ func (s *Server) handleMysqlQueryRules(w http.ResponseWriter, r *http.Request, r
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)
 		return
+	}
+	if rules == nil {
+		// better to return empty array than null
+		rules = make([]admin.MysqlQueryRule, 0)
 	}
 	b, err := json.Marshal(rules)
 	if err != nil {
