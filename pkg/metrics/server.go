@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -11,26 +12,35 @@ import (
 	graphite "github.com/cyberdelia/go-metrics-graphite"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
+	"github.com/jimmyjames85/proxysqlapi/pkg/common"
 	cache "github.com/patrickmn/go-cache"
 	metrics "github.com/rcrowley/go-metrics"
 )
 
 type Config struct {
-	DBuser string `envconfig:"DB_USER" default:"root"`
-	DBPswd string `envconfig:"DB_PASS" default:""`
-	DBHost string `envconfig:"DB_HOST" default:"localhost"`
-	DBPort int    `envconfig:"DB_PORT" default:"6032"`
+	common.DBConfig
+
+	Port int `envconfig:"PORT" required:"false" default:"16032"` // port to run on
+}
+
+func (c *Config) ToJSON() string {
+	copy := *c
+	copy.DBPswd = "****"
+	b, _ := json.Marshal(copy)
+	return string(b)
 }
 
 type PsqlMetricEmitter struct {
 	cache                *cache.Cache
 	cacheRefreshInterval time.Duration
-	psqlCfg              Config
+	cfg                  Config
 	graphiteCfg          graphite.Config
 	db                   *sql.DB
 }
 
-func NewEmitter(psqlCfg Config, r metrics.Registry, flushInterval time.Duration, prefix string, addr *net.TCPAddr) *PsqlMetricEmitter {
+// func NewConfig( r metrics.Registry, flushInterval time.Duration, prefix string, addr *net.TCPAddr) *PsqlMetricEmitter {
+// }
+func NewEmitter(cfg Config, r metrics.Registry, flushInterval time.Duration, prefix string, addr *net.TCPAddr) *PsqlMetricEmitter {
 	if r == nil {
 		r = metrics.DefaultRegistry
 	}
@@ -43,7 +53,7 @@ func NewEmitter(psqlCfg Config, r metrics.Registry, flushInterval time.Duration,
 			DurationUnit:  time.Nanosecond,
 			Prefix:        prefix,
 		},
-		psqlCfg:              psqlCfg,
+		cfg:                  cfg,
 		cache:                cache.New(cache.NoExpiration, 0*time.Second), // the second parameter is the purge interval, and we never want to purge
 		cacheRefreshInterval: 1 * time.Second,                              //TODO
 	}
@@ -66,9 +76,9 @@ func (e *PsqlMetricEmitter) emit() {
 func (e *PsqlMetricEmitter) Serve() error {
 
 	dbcfg := mysql.Config{
-		Addr:              fmt.Sprintf("%s:%d", e.psqlCfg.DBHost, e.psqlCfg.DBPort),
-		Passwd:            e.psqlCfg.DBPswd,
-		User:              e.psqlCfg.DBuser,
+		Addr:              fmt.Sprintf("%s:%d", e.cfg.DBHost, e.cfg.DBPort),
+		Passwd:            e.cfg.DBPswd,
+		User:              e.cfg.DBuser,
 		Net:               "tcp",
 		InterpolateParams: true,
 	}
