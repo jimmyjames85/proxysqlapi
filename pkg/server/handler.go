@@ -7,9 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 
-	"github.com/go-chi/chi"
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
 )
 
@@ -209,16 +207,6 @@ func (s *Server) loadConfigHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLoadConfig(w http.ResponseWriter, r *http.Request, runtime bool) {
-
-	userID, err := strconv.Atoi(chi.URLParam(r, "userID"))
-	if err != nil {
-		s.handleError(w, r, err, http.StatusBadRequest)
-		return
-	} else if userID != 180 {
-		s.handleError(w, r, err, http.StatusForbidden)
-		return
-	}
-
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		s.handleError(w, r, err, http.StatusInternalServerError)

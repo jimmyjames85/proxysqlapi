@@ -13,7 +13,6 @@ func main() {
 	envconfig.MustProcess("PROXYSQLAPI", &cfg)
 	srv, err := server.New(cfg)
 
-	//psqlCfg, err := admin.LoadConfig("example.json")
 	if err != nil {
 		log.Fatalf("err loading config: %v", err)
 	}
