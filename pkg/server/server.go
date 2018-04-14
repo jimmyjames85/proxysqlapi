@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"net/http/pprof"
-	"os"
 	"runtime/debug"
 	runtimepprof "runtime/pprof"
 	"time"
@@ -58,9 +57,6 @@ func New(cfg Config) (*Server, error) {
 
 // Serve starts http server running on the port set in srv
 func (s *Server) Serve() error {
-	defer s.Close()
-	var err error
-
 	dbcfg := mysql.Config{
 		Addr:              fmt.Sprintf("%s:%d", s.cfg.DBHost, s.cfg.DBPort),
 		Passwd:            s.cfg.DBPswd,
@@ -68,23 +64,25 @@ func (s *Server) Serve() error {
 		Net:               "tcp",
 		InterpolateParams: true,
 	}
-	s.psqlAdminDb, err = sql.Open("mysql", dbcfg.FormatDSN())
 
+	var err error
+	s.psqlAdminDb, err = sql.Open("mysql", dbcfg.FormatDSN())
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	httpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.cfg.Port))
 	if err != nil {
-		panic(fmt.Sprintf("unable to serve http - %v", err))
+		s.psqlAdminDb.Close()
+		return fmt.Errorf("unable to serve http - %v", err)
 	}
-	s.listen(httpListener)
-	return nil
+
+	defer s.Close()
+	return s.listen(httpListener)
 }
 
 // listen starts a server on the given listeners. It allows for easier testability of the server.
-func (s *Server) listen(httpListener net.Listener) {
-
+func (s *Server) listen(httpListener net.Listener) error {
 	s.httpRouter = chi.NewRouter()
 
 	s.httpEndpoints = []Endpoint{
@@ -180,11 +178,10 @@ func (s *Server) listen(httpListener net.Listener) {
 
 	if err := s.httpServer.Serve(httpListener); err != nil {
 		if err != http.ErrServerClosed {
-			log.Printf("server crash: %v", err)
-			os.Exit(1)
+			return err
 		}
 	}
-
+	return nil
 }
 
 func Panic(h http.Handler) http.Handler {

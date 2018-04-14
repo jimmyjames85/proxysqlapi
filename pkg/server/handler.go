@@ -499,5 +499,4 @@ func (s *Server) handleError(w http.ResponseWriter, r *http.Request, err error, 
 
 	b, _ := json.Marshal(m)
 	log.Printf("%+v", string(b))
-	panic(err)
 }
