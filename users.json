@@ -1,0 +1,13 @@
+[
+    {
+	"username": "gotham",
+	"password": "gotham",
+	"default_hostgroup": 1
+    },
+    {
+	"username": "newyork",
+	"password": "newyork",
+	"default_schema": "information_schema",
+	"default_hostgroup": 2
+    }
+]

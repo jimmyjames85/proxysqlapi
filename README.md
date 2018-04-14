@@ -1,30 +1,50 @@
 proxysqlapi
 ----
 
-`proxysqlapi` is a RESTful daemon that allows you to query and update
-your ProxySQL configuration with json structs. It connects to the
-ProxySQL admin interface and exposes HTTP endpoints for modifying and
-retrieving data in the admin and stats tables.
+`proxysqlapi` is an HTTP daemon which connects to the ProxySQL admin
+interface and exposes endpoints which allow you to query and update
+your ProxySQL configuration using JSON structs.
 
 Use Case
 ----
 
-What inspired this repo!: We use chef to configure ProxySQL via the
-proxysql.cnf file. Any time we wanted to update a backend, or add a
-query rule, we had to restart ProxySQL to load the proxysql.cnf file
-everytime. This was less than ideal, as ProxySQL is meant to be
-configured with zero downtime.
+Current:
+
+ - expose HTTP endpoints that return the contents of ProxySQL's admin
+   and stats tables in JSON
+ - expose HTTP endpoints that update both in memory and runtime admin
+   tables via JSON payloads (thus taking advantage of ProxySQL's
+   ability to be configured with zero down time)
+
+Planned:
+
+ - enable/integrate consul service discovery to automatically update `mysql_servers`
+ - emit ProxySQL metrics to graphite/grafana
+ - expose grpc endpoints
+ - tail and convert ProxySQL logs to JSON format for splunk
+   consumption
+
+What inspired this repo!: We use chef to manage out ProxySQL
+configuration. The chef attributes are written in ruby, and then
+converted to the ProxySQL config file format. We had to write a
+utility to do this conversion. Chef writes this file to disk and makes
+sure it is up to date. If chef detects a config change then it restart
+ProxySQL using the `--config` flag. This is less than ideal, as
+ProxySQL is designed to be configured with zero downtime.
 
 Installation
 ----
 ```bash
-go get github.com/jimmyjames85/proxysqlapi
-go install github.com/jimmyjames85/proxysqlapi/cmd/proxysqlapi
-PROXYSQLAPI_ADMIN_USER="admin" PROXYSQLAPI_ADMIN_PASS="admin" PROXYSQLAPI_ADMIN_HOST="localhost" PROXYSQLAPI_ADMIN_PORT=6032 proxysqlapi
+$ go get github.com/jimmyjames85/proxysqlapi
+$ go install github.com/jimmyjames85/proxysqlapi/cmd/proxysqlapi
+$ PROXYSQLAPI_ADMIN_USER="admin" PROXYSQLAPI_ADMIN_PASS="admin" PROXYSQLAPI_ADMIN_HOST="localhost" PROXYSQLAPI_ADMIN_PORT=6032 proxysqlapi
+2018/04/13 19:45:11 listening on 16032
 ```
 
 Sample Usage
 ----
+
+![demo](./.github/demo.gif)
 
 Given the file: servers.json
 
@@ -52,8 +72,8 @@ $ curl -X PUT localhost:16032/load/mysql_servers -d@./servers.json
 ```
 
 This will drop all the entries in the `mysql_servers` table and load
-new entries defined by the json payload. If the json payload omits a
-column/setting the ProxySQL default will be used instead. In this
+new entries defined by the JSON payload. If the JSON payload omits a
+column/setting, the ProxySQL default will be used instead. In this
 case, the second hostgroup omitted the port, so the default 3306 is
 used.
 
@@ -89,7 +109,7 @@ $ curl localhost:16032/mysql_servers
 ]
 ```
 
-To remove all the entries submit a json emtpy array
+To remove all entries submit an empty JSON array.
 
 ```bash
 $ curl -X PUT localhost:16032/load/mysql_servers -d'[]'
@@ -97,8 +117,44 @@ $ curl localhost:16032/mysql_servers
 []
 ```
 
-Possible Future Features
+To query and load to runtime tables use the runtime
+endpoints. E.g. the `/load/runtime/mysql_servers` endpoint does the
+exact same thing as the `/load/mysql_servers` endpoint, but then
+executes `LOAD MYSQL SERVERS TO RUNTIME`. Similar endpoint exist for
+`mysql_users`, `mysql_query_rules`, and `global_variables`.
+
+Current Endpoints
 ----
- - grpc interface
- - metrics
- - consul integration for service discovery
+
+```bash
+$ curl localhost:16032/
+
+Available Service Endpoints
+===================
+   curl -X GET localhost:16032/                                         # list available endpoints
+   curl -X PUT localhost:16032/load/config                              # load JSON configs to ProxySQL memory tables
+   curl -X PUT localhost:16032/load/global_variables
+   curl -X PUT localhost:16032/load/mysql_query_rules
+   curl -X PUT localhost:16032/load/mysql_servers
+   curl -X PUT localhost:16032/load/mysql_users
+   curl -X PUT localhost:16032/load/runtime/config                      # load JSON configs to ProxySQL runtime tables
+   curl -X PUT localhost:16032/load/runtime/global_variables
+   curl -X PUT localhost:16032/load/runtime/mysql_query_rules
+   curl -X PUT localhost:16032/load/runtime/mysql_servers
+   curl -X PUT localhost:16032/load/runtime/mysql_users
+   curl -X GET localhost:16032/global_variables                         # returns contents of in memory tables in JSON
+   curl -X GET localhost:16032/mysql_query_rules
+   curl -X GET localhost:16032/mysql_servers
+   curl -X GET localhost:16032/mysql_users
+   curl -X GET localhost:16032/runtime/global_variables                 # returns contents of runtime tables in JSON
+   curl -X GET localhost:16032/runtime/mysql_query_rules
+   curl -X GET localhost:16032/runtime/mysql_servers
+   curl -X GET localhost:16032/runtime/mysql_users
+   curl -X GET localhost:16032/stats/mysql_connection_pool              # returns contents of stats tables in JSON
+   curl -X GET localhost:16032/stats/mysql_global
+   curl -X GET localhost:16032/stats/mysql_query_digest
+   curl -X GET localhost:16032/stats/mysql_query_rules
+   curl -X GET localhost:16032/stats/mysql_users
+   curl -X GET localhost:16032/monitor/mysql_server_ping_log            # returns ping log in JSON
+   curl -X GET localhost:16032/debug/config                             # returns proxysqlapi's current configuration
+```
