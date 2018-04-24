@@ -24,8 +24,10 @@ services:
       - gotham
     expose:
       - "3306"
+      - "8400"
       - "8500"
       - "8501"
+      - "8600"
 
   gotham3:
     build:
@@ -37,10 +39,12 @@ services:
       - ./docker/gotham_repl.cnf:/etc/mysql/conf.d/gotham_repl.cnf
     links:
       - gotham
+      - gotham2
     expose:
-      - "3306"
+      - "8400"
       - "8500"
       - "8501"
+      - "8600"
 
   newyork:
     image: percona:5.7

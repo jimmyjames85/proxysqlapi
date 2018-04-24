@@ -8,6 +8,7 @@ ENV TERM=xterm \
 
 
 COPY ./docker/install_consul.sh /tmp/install_consul.sh
+
 RUN chmod +x /tmp/install_consul.sh
 RUN /tmp/install_consul.sh
 # CMD echo "CMD should be overridden in docker-compose.yml"
