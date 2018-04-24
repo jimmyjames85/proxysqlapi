@@ -1,41 +1,46 @@
 version: '2'
 services:
 
-  # mysql:
-  #   image: percona:5.7
-  #   environment:
-  #     - MYSQL_ALLOW_EMPTY_PASSWORD=1
-  #   expose:
-  #     - "3306"
-  #   ports:
-  #     - "3306:3306"
-
-  # mysql_02:
-  #   image: percona:5.7
-  #   environment:
-  #     - MYSQL_ALLOW_EMPTY_PASSWORD=1
-  #   expose:
-  #     - "33062"
-  #   ports:
-  #     - "33062:33062"
-
-  # mysql_03:
-  #   image: percona:5.7
-  #   environment:
-  #     - MYSQL_ALLOW_EMPTY_PASSWORD=1
-  #   expose:
-  #     - "33063"
-  #   ports:
-  #     - "33063:33063"
-
   gotham:
     image: percona:5.7
     volumes:
       - ./docker/gotham.sql:/etc/gotham.sql
+      - ./docker/gotham.cnf:/etc/mysql/conf.d/gotham.cnf
+      - ./data/gotham:/tmp
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=1
     expose:
       - "3306"
+
+  gotham2:
+    build:
+      context: .
+      dockerfile: ./docker/perconaWithConsul.dockerfile
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=1
+    volumes:
+      - ./docker/gotham_repl.cnf:/etc/mysql/conf.d/gotham_repl.cnf
+    links:
+      - gotham
+    expose:
+      - "3306"
+      - "8500"
+      - "8501"
+
+  gotham3:
+    build:
+      context: .
+      dockerfile: ./docker/perconaWithConsul.dockerfile
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=1
+    volumes:
+      - ./docker/gotham_repl.cnf:/etc/mysql/conf.d/gotham_repl.cnf
+    links:
+      - gotham
+    expose:
+      - "3306"
+      - "8500"
+      - "8501"
 
   newyork:
     image: percona:5.7
@@ -56,6 +61,8 @@ services:
     links:
       - gotham
       - newyork
+      - gotham2
+      - gotham3
     ports:
       - "6032:6032"
       - "6033:6033"
@@ -79,18 +86,16 @@ services:
       context: .
       dockerfile: ./docker/devel.dockerfile
     volumes:
+      - ./docker/users.sql:/etc/users.sql
       - ./docker/gotham.sql:/etc/gotham.sql
       - ./docker/newyork.sql:/etc/newyork.sql
+      - ./docker/devel.sh:/etc/devel.sh
     links:
       - gotham
       - newyork
       - proxysql
       - graphite
+      - gotham2
+      - gotham3
     command: >
-      bash -c "
-      while ! echo | nc -w1 gotham 3306 > /dev/null ; do printf 'waiting for gotham: '; sleep 1; done; echo gotham connected &&
-      mysql -uroot -h gotham < /etc/gotham.sql &&
-      while ! echo | nc -w1 newyork 3306 > /dev/null ; do printf 'waiting for newyork: '; sleep 1; done; echo newyork connected &&
-      mysql -uroot -h newyork < /etc/newyork.sql &&
-      while ! echo | nc -w1 proxysql 6032 > /dev/null ; do printf 'waiting for proxysql: '; sleep 1; done; echo proxysql connected &&
-      echo devel ready"
+      bash /etc/devel.sh

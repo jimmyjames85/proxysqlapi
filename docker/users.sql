@@ -1,0 +1,13 @@
+DROP USER IF EXISTS 'gotham'@'%';
+CREATE USER 'gotham'@'%' IDENTIFIED BY 'gotham';
+GRANT ALL PRIVILEGES ON *.* TO 'gotham'@'%';
+FLUSH PRIVILEGES;
+
+DROP USER IF EXISTS 'newyork'@'%';
+CREATE USER 'newyork'@'%' IDENTIFIED BY 'newyork';
+GRANT ALL PRIVILEGES ON *.* TO 'newyork'@'%';
+FLUSH PRIVILEGES;
+
+CREATE USER 'repl'@'%' IDENTIFIED BY 'repl';
+GRANT REPLICATION SLAVE ON *.*  TO 'repl'@'%';
+FLUSH PRIVILEGES;

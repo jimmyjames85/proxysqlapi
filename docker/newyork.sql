@@ -1,14 +1,3 @@
-DROP USER IF EXISTS 'newyork'@'%';
-CREATE USER 'newyork'@'%' IDENTIFIED BY 'newyork';
-GRANT ALL PRIVILEGES ON *.* TO 'newyork'@'%';
-FLUSH PRIVILEGES;
-
-DROP USER IF EXISTS 'gotham'@'%';
-CREATE USER 'gotham'@'%' IDENTIFIED BY 'gotham';
-GRANT ALL PRIVILEGES ON *.* TO 'gotham'@'%';
-FLUSH PRIVILEGES;
-
-
 DROP DATABASE IF EXISTS newyork;
 CREATE DATABASE newyork;
 USE newyork;

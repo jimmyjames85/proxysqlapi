@@ -1,0 +1,8 @@
+-- CHANGE MASTER TO MASTER_HOST='gotham',
+--                 MASTER_USER='repl',
+--                 MASTER_PASSWORD='repl',
+--                 MASTER_LOG_FILE='TheMaster-bin.000001',
+--                 MASTER_LOG_POS=481;
+-- CREATE USER 'repl'@'%' IDENTIFIED BY 'repl';
+-- GRANT REPLICATION SLAVE ON *.*  TO 'repl'@'%';
+-- FLUSH PRIVILEGES;
