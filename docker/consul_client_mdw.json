@@ -1,0 +1,15 @@
+{
+    "bootstrap": false,
+    "server": false,
+    "log_level": "DEBUG",
+    "enable_syslog": false,
+    "datacenter": "mdw1",
+    "addresses" : {
+        "http": "0.0.0.0"
+    },
+    "bind_addr": "0.0.0.0",
+    "data_dir": "/root/consuldata",
+    "ui_dir": "/root/consul-ui",
+    "acl_datacenter": "mdw1",
+    "acl_default_policy": "allow"
+}

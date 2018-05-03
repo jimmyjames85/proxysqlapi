@@ -10,17 +10,24 @@ import (
 	"net/http/pprof"
 	"runtime/debug"
 	runtimepprof "runtime/pprof"
+	"strings"
+	"sync"
 	"time"
 
+	healthcheck "github.com/docker/go-healthcheck"
 	"github.com/go-chi/chi"
 	"github.com/go-sql-driver/mysql"
+	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
 	"github.com/jimmyjames85/proxysqlapi/pkg/common"
 )
 
 type Config struct {
 	common.DBConfig
-
-	Port int `envconfig:"PORT" required:"false" default:"16032"` // port to run on
+	Port               int                  `envconfig:"PORT" required:"false" default:"16032"` // port to run on
+	ConsulWatchEnabled bool                 `envconfig:"CONSUL_WATCH_ENABLED" required:"false" default:"false"`
+	ConsulWatches      WatchDefinitionSlice `envconfig:"CONSUL_WATCHES" required:"false" default:"[]"`
+	ConsulAddr         string               `envconfig:"CONSUL_ADDR" required:"false" default:"localhost:8500"`
+	ConsulDatacenters  []string             `envconfig:"CONSUL_DATACENTERS" required:"false" default:""`
 }
 
 func (c *Config) ToJSON() string {
@@ -37,8 +44,15 @@ type Server struct {
 	httpServer    *http.Server
 	httpEndpoints []Endpoint
 
+	hc *healthcheck.Registry
+
 	healthcheckRouter    *chi.Mux
+	healthcheckServer    *http.Server
 	healthcheckEndpoints []Endpoint
+
+	consulWatchers    []*consulServiceWatcher
+	lastKnownBackends map[int][]admin.MysqlServer
+	backendLock       sync.Mutex
 
 	psqlAdminDb *sql.DB
 }
@@ -52,7 +66,10 @@ type Endpoint struct {
 
 // New creates a new server
 func New(cfg Config) (*Server, error) {
-	return &Server{cfg: cfg}, nil
+	return &Server{
+		cfg:               cfg,
+		lastKnownBackends: make(map[int][]admin.MysqlServer),
+	}, nil
 }
 
 // Serve starts http server running on the port set in srv
@@ -70,6 +87,17 @@ func (s *Server) Serve() error {
 	if err != nil {
 		return err
 	}
+	s.hc = healthcheck.NewRegistry()
+	s.hc.RegisterPeriodicFunc("proxysql", time.Second*5, s.proxysqlHealthcheck)
+
+	if s.cfg.ConsulWatchEnabled {
+		err = s.watchConsul()
+		if err != nil {
+			s.psqlAdminDb.Close()
+			return err
+		}
+		s.hc.RegisterPeriodicFunc("consul", time.Second*5, s.consulHealthcheck)
+	}
 
 	httpListener, err := net.Listen("tcp", fmt.Sprintf(":%d", s.cfg.Port))
 	if err != nil {
@@ -83,12 +111,12 @@ func (s *Server) Serve() error {
 
 // listen starts a server on the given listeners. It allows for easier testability of the server.
 func (s *Server) listen(httpListener net.Listener) error {
-	s.httpRouter = chi.NewRouter()
 
+	s.httpRouter = chi.NewRouter()
 	s.httpEndpoints = []Endpoint{
 		// root and healthchecks
 		{Method: "GET", Path: "/", HandlerFunc: s.rootHandler},
-		// TODO where did my healthcheck go?!?!?
+		{Method: "GET", Path: "/healthcheck", HandlerFunc: s.healthcheckHandler},
 
 		// load to memory
 		{Method: "PUT", Path: "/load/config", HandlerFunc: s.loadConfigHandler},
@@ -163,16 +191,18 @@ func (s *Server) listen(httpListener net.Listener) error {
 		{Method: "GET", Path: "/debug/pprof/", HandlerFunc: pprof.Index},
 	}
 
-	// runtime pprof endoints
-	for _, p := range runtimepprof.Profiles() {
-		s.httpEndpoints = append(s.httpEndpoints, Endpoint{Method: "GET", Path: "/debug/pprof/" + p.Name(), HandlerFunc: pprof.Index})
-	}
+	// service endpoints
 	for _, ep := range s.httpEndpoints {
 		s.httpRouter.MethodFunc(ep.Method, ep.Path, ep.HandlerFunc)
 	}
 
+	// runtime pprof endoints
+	for _, p := range runtimepprof.Profiles() {
+		s.httpEndpoints = append(s.httpEndpoints, Endpoint{Method: "GET", Path: "/debug/pprof/" + p.Name(), HandlerFunc: pprof.Index})
+	}
+
 	log.Printf("listening on %d", s.cfg.Port)
-	s.httpServer = &http.Server{Addr: fmt.Sprintf(":%d", s.cfg.Port), Handler: Panic(s.httpRouter)}
+	s.httpServer = &http.Server{Addr: fmt.Sprintf(":%d", s.cfg.Port), Handler: panic(s.httpRouter)}
 	s.httpServer.WriteTimeout = 1 * time.Minute
 	s.httpServer.ReadTimeout = 1 * time.Minute
 
@@ -184,7 +214,26 @@ func (s *Server) listen(httpListener net.Listener) error {
 	return nil
 }
 
-func Panic(h http.Handler) http.Handler {
+func (s *Server) proxysqlHealthcheck() error {
+	return s.psqlAdminDb.Ping()
+}
+
+func (s *Server) consulHealthcheck() error {
+	errs := []string{}
+	for _, w := range s.consulWatchers {
+		err := w.CheckHealth()
+		if err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
+	if len(errs) > 0 {
+		hcMsg := "Error(s) communicating with consul: " + strings.Join(errs, "; ")
+		return fmt.Errorf(hcMsg)
+	}
+	return nil
+}
+
+func panic(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if rec := recover(); rec != nil {
@@ -197,7 +246,59 @@ func Panic(h http.Handler) http.Handler {
 
 // Close closes all db connections or any other clean up
 func (s *Server) Close() error {
+
 	defer s.psqlAdminDb.Close()
 	// close socket to stop new requests from coming in
 	return s.httpServer.Close()
+}
+
+func (s *Server) updateBackends(update hostgroupUpdate) error {
+	err := admin.DropMysqlServerHostgroup(s.psqlAdminDb, update.hostgroupID)
+	if err != nil {
+		return err
+	}
+
+	err = admin.InsertMysqlServers(s.psqlAdminDb, update.mysqlServers...)
+	if err != nil {
+		return err
+	}
+
+	err = admin.LoadMysqlServersToRuntime(s.psqlAdminDb)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Server) watchConsul() error {
+
+	ch := make(chan hostgroupUpdate)
+
+	for _, def := range s.cfg.ConsulWatches {
+		w, err := newConsulServiceWatcher(s.cfg.ConsulAddr, s.cfg.ConsulDatacenters, def, ch)
+		if err != nil {
+			return err
+		}
+		w.Start()
+	}
+
+	go func() {
+		for {
+			update := <-ch
+			if update.primary && len(update.mysqlServers) > 1 {
+				log.Printf("detected multiple primaries for hostgroup %d: aborting update", update.hostgroupID) // todo update logger
+				continue
+			}
+			s.backendLock.Lock()
+			s.lastKnownBackends[update.hostgroupID] = update.mysqlServers
+			err := s.updateBackends(update)
+			s.backendLock.Unlock()
+			if err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+	return nil
+
 }

@@ -16,6 +16,7 @@ waitforit gotham 3306
 waitforit newyork 3306
 waitforit gotham2 3306
 waitforit gotham3 3306
+waitforit gotham_las 3306
 
 mysql -uroot -h gotham < /etc/users.sql
 mysql -uroot -h newyork < /etc/users.sql

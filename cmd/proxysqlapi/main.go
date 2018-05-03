@@ -10,7 +10,7 @@ import (
 func main() {
 	cfg := server.Config{}
 	envconfig.MustProcess("PROXYSQLAPI", &cfg)
-
+	log.Printf("%s", cfg.ToJSON())
 	srv, err := server.New(cfg)
 	if err != nil {
 		log.Fatalf("err loading config: %v", err)

@@ -1,0 +1,21 @@
+{
+    "service": {
+        "address": "127.0.0.1",
+        "name": "gotham",
+        "port": 3306,
+        "checks": [
+            {
+                "interval": "5s",
+                "notes": "Basic TCP port check for 127.0.0.1:3306",
+                "tcp": "127.0.0.1:3306"
+            }
+        ],
+        "tags": [
+            "mysql",
+            "database",
+            "db_gotham",
+            "db_base",
+            "db_master"
+        ]
+    }
+}

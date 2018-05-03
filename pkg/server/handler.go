@@ -11,6 +11,18 @@ import (
 	"github.com/jimmyjames85/proxysqlapi/pkg/admin"
 )
 
+func (s *Server) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
+	s.hc.CheckStatus()
+	b, err := json.Marshal(s.hc.CheckStatus())
+	if err != nil {
+		s.handleError(w, r, err, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(b)
+
+}
+
 // rootHandler will return a list of available endpoints
 func (s *Server) rootHandler(w http.ResponseWriter, r *http.Request) {
 	bw := bufio.NewWriter(w)

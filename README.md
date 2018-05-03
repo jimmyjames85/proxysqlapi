@@ -119,8 +119,8 @@ $ curl localhost:16032/mysql_servers
 
 To query and load to runtime tables use the runtime
 endpoints. E.g. the `/load/runtime/mysql_servers` endpoint does the
-exact same thing as the `/load/mysql_servers` endpoint, but then
-executes `LOAD MYSQL SERVERS TO RUNTIME`. Similar endpoint exist for
+exact same thing as the `/load/mysql_servers` endpoint, but also
+executes `LOAD MYSQL SERVERS TO RUNTIME`. Similar endpoints exist for
 `mysql_users`, `mysql_query_rules`, and `global_variables`.
 
 Current Endpoints

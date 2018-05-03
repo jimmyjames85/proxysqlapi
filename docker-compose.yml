@@ -2,15 +2,21 @@ version: '2'
 services:
 
   gotham:
-    image: percona:5.7
+    build:
+      context: .
+      dockerfile: ./docker/perconaWithConsul.dockerfile
     volumes:
-      - ./docker/gotham.sql:/etc/gotham.sql
       - ./docker/gotham.cnf:/etc/mysql/conf.d/gotham.cnf
-      - ./data/gotham:/tmp
+      - ./docker/consul_gotham_master.json:/etc/consul_config/consul_gotham_master.json
+      - ./docker/consul_client_mdw.json:/etc/consul_config/config.json
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=1
     expose:
       - "3306"
+      - "8400"
+      - "8500"
+      - "8501"
+      - "8600"
 
   gotham2:
     build:
@@ -20,6 +26,8 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=1
     volumes:
       - ./docker/gotham_repl.cnf:/etc/mysql/conf.d/gotham_repl.cnf
+      - ./docker/consul_gotham_replica.json:/etc/consul_config/consul_gotham_replica.json
+      - ./docker/consul_server_mdw.json:/etc/consul_config/config.json
     links:
       - gotham
     expose:
@@ -28,6 +36,10 @@ services:
       - "8500"
       - "8501"
       - "8600"
+    ports:
+      - "8500:8500"
+      - "8600:8600"
+      - "3306:3306"
 
   gotham3:
     build:
@@ -37,10 +49,31 @@ services:
       - MYSQL_ALLOW_EMPTY_PASSWORD=1
     volumes:
       - ./docker/gotham_repl.cnf:/etc/mysql/conf.d/gotham_repl.cnf
+      - ./docker/consul_gotham_replica.json:/etc/consul_config/consul_gotham_replica.json
+      - ./docker/consul_client_mdw.json:/etc/consul_config/config.json
     links:
-      - gotham
       - gotham2
     expose:
+      - "3306"
+      - "8400"
+      - "8500"
+      - "8501"
+      - "8600"
+
+  gotham_las:
+    build:
+      context: .
+      dockerfile: ./docker/perconaWithConsul.dockerfile
+    volumes:
+      - ./docker/gotham.cnf:/etc/mysql/conf.d/gotham.cnf
+      - ./docker/consul_gotham_master.json:/etc/consul_config/consul_gotham_master.json
+      - ./docker/consul_server_las.json:/etc/consul_config/config.json
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=1
+    links:
+      - gotham2
+    expose:
+      - "3306"
       - "8400"
       - "8500"
       - "8501"
@@ -101,5 +134,6 @@ services:
       - graphite
       - gotham2
       - gotham3
+      - gotham_las
     command: >
       bash /etc/devel.sh

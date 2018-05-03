@@ -452,6 +452,8 @@ type MysqlUser struct {
 	MaxConnections        int     `json:"max_connections"`
 }
 
+var ErrUnmarshalNullUsername = fmt.Errorf("mysql_user.username cannot be null")
+
 func (u *MysqlUser) UnmarshalJSON(data []byte) error {
 	type defaultUser MysqlUser
 	d := defaultUser(*NewMysqlUser(""))
@@ -462,7 +464,7 @@ func (u *MysqlUser) UnmarshalJSON(data []byte) error {
 	}
 	*u = MysqlUser(d)
 	if u.Username == nil {
-		return fmt.Errorf("mysql_user.username cannot be null")
+		return ErrUnmarshalNullUsername
 	}
 	return nil
 }
@@ -664,6 +666,8 @@ type MysqlServer struct {
 	Comment           string  `json:"comment"`
 }
 
+var ErrUnmarshalNullHostname = fmt.Errorf("mysql_server.hostname cannot be null")
+
 func (s *MysqlServer) UnmarshalJSON(data []byte) error {
 	type defaultServer MysqlServer
 	d := defaultServer(*NewMysqlServer(""))
@@ -674,7 +678,7 @@ func (s *MysqlServer) UnmarshalJSON(data []byte) error {
 	}
 	*s = MysqlServer(d)
 	if s.Hostname == nil {
-		return fmt.Errorf("mysql_server.hostname cannot be null")
+		return ErrUnmarshalNullHostname
 	}
 	return nil
 }
